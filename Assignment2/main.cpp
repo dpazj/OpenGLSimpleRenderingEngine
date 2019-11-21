@@ -44,6 +44,8 @@ also includes the OpenGL extension initialisation*/
 #include "OpenJoeL/Utils/Camera.h"
 #include "OpenJoeL/Utils/InputManager.h"
 
+#include "OpenJoeL/Render/DynamicCubemap.h"
+
 // Include headers for our objects
 
 GLint screen_width = 1680;
@@ -58,32 +60,24 @@ GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
 Shader* shader;
 
 
-ModelMesh* test;
-
-Texture* test_tex;
-unsigned int albedo, normal, metallic, roughness, ao;
-
+SphereMesh* red_sphere;
+SphereMesh* blue_sphere;
 
 
 Camera camera(glm::vec3(0, 0, 5));
 
 InputManager* input_manager;
 
+DynamicCubemap* dynamic;
 
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
 
 
 glm::vec3 lightPositions[] = {
-	glm::vec3(-10.0f,  10.0f, 10.0f),
-	glm::vec3(10.0f,  10.0f, 10.0f),
-	glm::vec3(-10.0f, -10.0f, 10.0f),
-	glm::vec3(10.0f, -10.0f, 10.0f),
+	glm::vec3(-10.0f,  10.0f, 10.0f)
 };
 glm::vec3 lightColors[] = {
-	glm::vec3(300.0f, 300.0f, 300.0f),
-	glm::vec3(300.0f, 300.0f, 300.0f),
-	glm::vec3(300.0f, 300.0f, 300.0f),
 	glm::vec3(300.0f, 300.0f, 300.0f)
 };
 
@@ -129,8 +123,9 @@ void init(GLWrapper* glw)
 	//load shaders
 	try
 	{
-		shader = new Shader("../shaders/pbrtexture.vert", "../shaders/pbrtexture.frag");
-		//shader = std::make_shared<Shader>("pbr.vert", "pbr.frag");
+		//shader = new Shader("../shaders/pbrtexture.vert", "../shaders/pbrtexture.frag");
+		shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
+
 
 	}
 	catch (std::exception & e)
@@ -143,14 +138,49 @@ void init(GLWrapper* glw)
 	setup_inputs(glw);
 	shader->UseShader();
 
-	PBRTextures textures("../models/Cerberus/Textures/Cerberus_A.tga", "../models/Cerberus/Textures/Cerberus_N.tga", "../models/Cerberus/Textures/Cerberus_M.tga", "../models/Cerberus/Textures/Cerberus_R.tga", "../models/Cerberus/Textures/Cerberus_AO.tga");
+	
+	red_sphere = new SphereMesh();
+	blue_sphere = new SphereMesh();
 
-	test = new ModelMesh();
-	test->SetMeshTextures(textures);
-	////test->LoadObject("export3dcoat.obj");
-	test->LoadObject("../models/Cerberus/Cerberus_LP.obj");
+	red_sphere->Init();
+	blue_sphere->Init();
+
+
+	dynamic = new DynamicCubemap(screen_width,screen_height);
 }
 
+
+
+void RenderScene(glm::mat4 projection, glm::mat4 view)
+{
+	shader->UseShader();
+	shader->SetMat4("view", view);
+	shader->SetMat4("projection", projection);
+	shader->SetVec3("camera_position", camera.GetPosition());
+	shader->SetFloat("metallic", 1.0f);
+	shader->SetFloat("roughness", 0.2f);
+	shader->SetFloat("ambient_occlusion", 1.0f);
+
+	auto model = glm::mat4(1.0f);
+
+	model = glm::translate(model, glm::vec3(-3.5, 0, 0));
+	shader->SetMat4("model", model);
+	shader->SetVec3("albedo", glm::vec3(1, 0, 0));
+	blue_sphere->Draw(shader);
+
+	model = glm::translate(model, glm::vec3(3.5, 0, 0));
+	shader->SetMat4("model", model);
+	shader->SetVec3("albedo", glm::vec3(0, 0, 1));
+	red_sphere->Draw(shader);
+
+	for (unsigned int i = 0; i < 4; ++i)
+	{
+		glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
+		newPos = lightPositions[i];
+		shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), newPos);
+		shader->SetVec3(("light_colors[" + std::to_string(i) + "]").c_str(), lightColors[i]);
+	}
+}
 
 
 
@@ -168,30 +198,15 @@ void display()
 
 
 	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
+
+	const auto render_function = [projection](glm::mat4 view) {
+		RenderScene(projection, view);
+	};
+
+	dynamic->RenderCubemap(glm::vec3(-3.5, 0, 0), render_function);
+
 	const glm::mat4 view = camera.GetView();
-
-
-	shader->UseShader();
-	shader->SetMat4("view", view);
-	shader->SetMat4("projection", projection);
-	shader->SetVec3("camera_position", camera.GetPosition());
-
-	glm::mat4 model(1.0f);
-	shader->SetMat4("model", model);
-	test->Draw(shader);
-
-	model = glm::scale(model,glm::vec3(0.5f,0.5f,0.5f));
-	model = glm::translate(model, glm::vec3(0.2f, 0.7f, 0.0f));
-	shader->SetMat4("model", model);
-	test->Draw(shader);
-
-	for (unsigned int i = 0; i < 4; ++i)
-	{
-		glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
-		newPos = lightPositions[i];
-		shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), newPos);
-		shader->SetVec3(("light_colors[" + std::to_string(i) + "]").c_str(), lightColors[i]);
-	}
+	RenderScene(projection, view);
 
 }
 

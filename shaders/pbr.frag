@@ -78,7 +78,7 @@ void main()
 
 	vec3 LightOutput = vec3(0.0f);
 
-	for(int i = 0; i < 4; i++)
+	for(int i = 0; i < 1; i++)
 	{
 		vec3 LightDir = normalize(light_positions[i] - Position);
 		vec3 Half = normalize(V + LightDir);

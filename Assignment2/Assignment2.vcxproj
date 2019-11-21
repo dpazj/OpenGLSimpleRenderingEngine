@@ -136,9 +136,10 @@
     <ClCompile Include="..\include\OpenJoeL\Meshes\ModelMesh.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Meshes\SphereMesh.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Meshes\Torus.cpp" />
+    <ClCompile Include="..\include\OpenJoeL\Render\DynamicCubemap.cpp" />
+    <ClCompile Include="..\include\OpenJoeL\Render\FrameBuffer.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Shaders\Shader.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Utils\Camera.cpp" />
-    <ClCompile Include="..\include\OpenJoeL\Utils\FrameBuffer.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Utils\InputManager.cpp" />
     <ClCompile Include="..\include\wrapper_glfw.cpp" />
     <ClCompile Include="main.cpp" />
@@ -151,10 +152,11 @@
     <ClInclude Include="..\include\OpenJoeL\Meshes\ModelMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\SphereMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Torus.h" />
+    <ClInclude Include="..\include\OpenJoeL\Render\DynamicCubemap.h" />
+    <ClInclude Include="..\include\OpenJoeL\Render\FrameBuffer.h" />
     <ClInclude Include="..\include\OpenJoeL\Shaders\Shader.h" />
     <ClInclude Include="..\include\OpenJoeL\Texture\Texture.h" />
     <ClInclude Include="..\include\OpenJoeL\Utils\Camera.h" />
-    <ClInclude Include="..\include\OpenJoeL\Utils\FrameBuffer.h" />
     <ClInclude Include="..\include\OpenJoeL\Utils\InputManager.h" />
     <ClInclude Include="..\include\wrapper_glfw.h" />
   </ItemGroup>
