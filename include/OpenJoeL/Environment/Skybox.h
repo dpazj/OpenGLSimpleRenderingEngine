@@ -10,22 +10,21 @@
 
 #include <glload/gl_4_0.h>
 
-#include <stb_image.h>
 
 class Skybox
 {
 public:
 
-	Skybox(std::vector<std::string> faces, std::shared_ptr<Shader> shader);
+	Skybox(std::vector<std::string> faces, Shader* shader);
 
 	void Init();
 	void Draw();
 
-	std::shared_ptr<Shader> GetShader();
+	Shader* GetShader();
 
 private:
 
-	std::shared_ptr<Shader> m_shader;
+	Shader* m_shader;
 
 	std::vector<std::string> m_faces;
 	GLuint m_skybox_vao = 0;

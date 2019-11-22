@@ -7,18 +7,53 @@ FrameBuffer::FrameBuffer()
 }
 
 
-void FrameBuffer::AddRenderBuffer(GLuint texture, GLuint width, GLuint height)
+void FrameBuffer::AddRenderBuffer(GLuint width, GLuint height)
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+	
 	glGenRenderbuffers(1, &m_rbo);
 	glBindRenderbuffer(GL_RENDERBUFFER, m_rbo);
 	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, width, height);
 	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-
 	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, m_fbo);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, texture, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	
 }
+
+
+void FrameBuffer::AttachColour(GLuint texture)
+{
+	
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, texture, 0);
+}
+
+void FrameBuffer::CheckFrameBufferStatus()
+{
+
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	switch (status) {
+		case GL_FRAMEBUFFER_UNDEFINED: {
+			fprintf(stderr, "Undefined.\n");
+			break;
+		}
+		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: {
+			fprintf(stderr, "FBO: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT.\n");
+			break;
+		}
+		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: {
+			fprintf(stderr, "FBO: GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT.\n");
+			break;
+		}
+		case GL_FRAMEBUFFER_UNSUPPORTED: {
+			fprintf(stderr, "FBO: GL_FRAMEBUFFER_UNSUPPORTED.\n");
+			break;
+		}
+		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: {
+			fprintf(stderr, "FBO: GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE.\n");
+			break;
+		}
+	}
+
+}
+
 
 void FrameBuffer::Bind()
 {
@@ -62,6 +97,7 @@ void FrameBuffer::Clear()
 //
 //	m_frame_buffer_shader->UseShader();
 //	m_frame_buffer_shader->SetInt("screenTexture", 0);
+
 //	//create framebuffer obj
 //	glGenFramebuffers(1, &m_framebuffer_object);
 //	glBindFramebuffer(GL_FRAMEBUFFER, m_framebuffer_object);

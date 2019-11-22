@@ -43,6 +43,7 @@ also includes the OpenGL extension initialisation*/
 
 #include "OpenJoeL/Utils/Camera.h"
 #include "OpenJoeL/Utils/InputManager.h"
+#include "OpenJoeL/Environment/Skybox.h"
 
 #include "OpenJoeL/Render/DynamicCubemap.h"
 
@@ -58,7 +59,10 @@ GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
 //SHADERS
 //std::shared_ptr<Shader> shader;
 Shader* shader;
+Shader* reflection_shader;
+Shader* skybox_shader;
 
+Skybox* skybox;
 
 SphereMesh* red_sphere;
 SphereMesh* blue_sphere;
@@ -124,7 +128,9 @@ void init(GLWrapper* glw)
 	try
 	{
 		//shader = new Shader("../shaders/pbrtexture.vert", "../shaders/pbrtexture.frag");
+		skybox_shader = new Shader("../shaders/skybox.vert", "../shaders/skybox.frag");
 		shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
+		reflection_shader = new Shader("../shaders/pbrreflection.vert", "../shaders/pbrreflection.frag");
 
 
 	}
@@ -146,7 +152,14 @@ void init(GLWrapper* glw)
 	blue_sphere->Init();
 
 
-	dynamic = new DynamicCubemap(screen_width,screen_height);
+	dynamic = new DynamicCubemap(1024,1024);
+
+	skybox_shader->UseShader();
+	skybox_shader->SetInt("skybox", 1);
+
+	const std::vector<std::string> skybox_paths = { "../skybox/right.png","../skybox/left.png" ,"../skybox/up.png" ,"../skybox/down.png","../skybox/back.png","../skybox/front.png" };
+	skybox = new Skybox(skybox_paths, skybox_shader);
+	skybox->Init();
 }
 
 
@@ -161,13 +174,23 @@ void RenderScene(glm::mat4 projection, glm::mat4 view)
 	shader->SetFloat("roughness", 0.2f);
 	shader->SetFloat("ambient_occlusion", 1.0f);
 
+	reflection_shader->UseShader();
+	reflection_shader->SetMat4("view", view);
+	reflection_shader->SetMat4("projection", projection);
+	reflection_shader->SetVec3("camera_position", camera.GetPosition());
+	reflection_shader->SetFloat("metallic", 1.0f);
+	reflection_shader->SetFloat("roughness", 0.2f);
+	reflection_shader->SetFloat("ambient_occlusion", 1.0f);
+	reflection_shader->SetInt("reflection_cube", 0);
+
 	auto model = glm::mat4(1.0f);
 
 	model = glm::translate(model, glm::vec3(-3.5, 0, 0));
-	shader->SetMat4("model", model);
-	shader->SetVec3("albedo", glm::vec3(1, 0, 0));
-	blue_sphere->Draw(shader);
+	reflection_shader->SetMat4("model", model);
+	reflection_shader->SetVec3("albedo", glm::vec3(1, 0, 0));
+	blue_sphere->Draw(reflection_shader);
 
+	shader->UseShader();
 	model = glm::translate(model, glm::vec3(3.5, 0, 0));
 	shader->SetMat4("model", model);
 	shader->SetVec3("albedo", glm::vec3(0, 0, 1));
@@ -179,6 +202,13 @@ void RenderScene(glm::mat4 projection, glm::mat4 view)
 		newPos = lightPositions[i];
 		shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), newPos);
 		shader->SetVec3(("light_colors[" + std::to_string(i) + "]").c_str(), lightColors[i]);
+	}
+
+	{
+		skybox_shader->UseShader();
+		skybox_shader->SetMat4("view", glm::mat4(glm::mat3(view)));
+		skybox_shader->SetMat4("projection", projection);
+		skybox->Draw();
 	}
 }
 
@@ -199,12 +229,12 @@ void display()
 
 	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
 
-	const auto render_function = [projection](glm::mat4 view) {
+	const auto render_function = [](glm::mat4 projection, glm::mat4 view) {
 		RenderScene(projection, view);
 	};
 
 	dynamic->RenderCubemap(glm::vec3(-3.5, 0, 0), render_function);
-
+	dynamic->BindCubemap();
 	const glm::mat4 view = camera.GetView();
 	RenderScene(projection, view);
 

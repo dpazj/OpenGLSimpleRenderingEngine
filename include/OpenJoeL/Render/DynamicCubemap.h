@@ -12,8 +12,9 @@ class DynamicCubemap
 public:
 
 	DynamicCubemap(GLuint width, GLuint height);
-	void RenderCubemap(glm::vec3 world_position, std::function<void(glm::mat4)> render_scene);
+	void RenderCubemap(glm::vec3 world_position, std::function<void(glm::mat4,glm::mat4)> render_scene);
 
+	void BindCubemap();
 	
 
 private:

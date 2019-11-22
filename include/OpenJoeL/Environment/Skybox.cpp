@@ -8,7 +8,7 @@
 
 //modified from https://learnopengl.com/Advanced-OpenGL/Cubemaps
 
-Skybox::Skybox(std::vector<std::string> faces, std::shared_ptr<Shader> shader)
+Skybox::Skybox(std::vector<std::string> faces, Shader* shader)
 {
 	m_faces = faces;
 	m_shader = shader;
@@ -126,5 +126,5 @@ void Skybox::LoadCubeMap()
 }
 
 
-std::shared_ptr<Shader> Skybox::GetShader() { return m_shader; }
+Shader* Skybox::GetShader() { return m_shader; }
 

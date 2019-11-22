@@ -13,8 +13,9 @@ public:
 	void Bind();
 	void Unbind();
 	void Clear();
-	void AddRenderBuffer(GLuint texture, GLuint width, GLuint height);
-
+	void AddRenderBuffer(GLuint width, GLuint height);
+	void AttachColour(GLuint texture);
+	void CheckFrameBufferStatus();
 
 private:
 	
