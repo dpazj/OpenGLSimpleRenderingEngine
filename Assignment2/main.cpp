@@ -38,7 +38,6 @@ also includes the OpenGL extension initialisation*/
 #include "OpenJoeL/Shaders/Shader.h"
 #include "OpenJoeL/Meshes/ModelMesh.h"
 #include "OpenJoeL/Meshes/SphereMesh.h"
-#include "OpenJoeL/Meshes/CubeMesh.h"
 
 #include "OpenJoeL/Texture/Texture.h"
 
@@ -65,15 +64,15 @@ Shader* skybox_shader;
 
 Skybox* skybox;
 
-CubeMesh* blue;
-SphereMesh* red;
+SphereMesh* red_sphere;
+SphereMesh* blue_sphere;
 
 
 Camera camera(glm::vec3(0, 0, 5));
 
 InputManager* input_manager;
 
-//DynamicCubemap* dynamic;
+DynamicCubemap* dynamic;
 
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
@@ -87,10 +86,6 @@ glm::vec3 lightColors[] = {
 };
 
 unsigned int loadTexture(char const* path);
-
-
-GLuint cube, fbo;
-
 
 
 void setup_inputs(GLWrapper* glw)
@@ -123,63 +118,6 @@ void setup_inputs(GLWrapper* glw)
 }
 
 
-void create_dynamic_framebuffers()
-{
-
-	glActiveTexture(GL_TEXTURE7);
-	glGenTextures(1, &cube);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cube);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-	// set textures
-	for (int i = 0; i < 6; ++i)
-		glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, 1024, 1024, 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
-
-	GLuint rbo;
-	glGenFramebuffers(1, &fbo);
-	glGenRenderbuffers(1, &rbo);
-	glBindRenderbuffer(GL_RENDERBUFFER, rbo);
-	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 1024, 1024);
-	glBindRenderbuffer(GL_RENDERBUFFER, 0);
-	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, fbo);
-
-
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, cube, 0);
-
-	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-
-	switch (status) {
-		case GL_FRAMEBUFFER_UNDEFINED: {
-			fprintf(stderr, "Undefined.\n");
-			break;
-		}
-		case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: {
-			fprintf(stderr, "FBO: GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT.\n");
-			break;
-		}
-		case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: {
-			fprintf(stderr, "FBO: GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT.\n");
-			break;
-		}
-		case GL_FRAMEBUFFER_UNSUPPORTED: {
-			fprintf(stderr, "FBO: GL_FRAMEBUFFER_UNSUPPORTED.\n");
-			break;
-		}
-		case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: {
-			fprintf(stderr, "FBO: GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE.\n");
-			break;
-		}
-	}
-
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-	glActiveTexture(GL_TEXTURE0);
-}
-
 void init(GLWrapper* glw)
 {
 	
@@ -193,6 +131,8 @@ void init(GLWrapper* glw)
 		skybox_shader = new Shader("../shaders/skybox.vert", "../shaders/skybox.frag");
 		shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
 		reflection_shader = new Shader("../shaders/pbrreflection.vert", "../shaders/pbrreflection.frag");
+
+
 	}
 	catch (std::exception & e)
 	{
@@ -205,27 +145,21 @@ void init(GLWrapper* glw)
 	shader->UseShader();
 
 	
-	red = new SphereMesh();
-	blue= new CubeMesh();
+	red_sphere = new SphereMesh();
+	blue_sphere = new SphereMesh();
 
-	red ->Init();
-	blue ->Init();
+	red_sphere->Init();
+	blue_sphere->Init();
 
 
-	//dynamic = new DynamicCubemap(1024,1024);
+	dynamic = new DynamicCubemap(1024,1024);
 
 	skybox_shader->UseShader();
 	skybox_shader->SetInt("skybox", 1);
 
-	reflection_shader->UseShader();
-	reflection_shader->SetInt("reflection_cube", 0);
-
 	const std::vector<std::string> skybox_paths = { "../skybox/right.png","../skybox/left.png" ,"../skybox/up.png" ,"../skybox/down.png","../skybox/back.png","../skybox/front.png" };
 	skybox = new Skybox(skybox_paths, skybox_shader);
 	skybox->Init();
-
-
-	create_dynamic_framebuffers();
 }
 
 
@@ -247,26 +181,20 @@ void RenderScene(glm::mat4 projection, glm::mat4 view)
 	reflection_shader->SetFloat("metallic", 1.0f);
 	reflection_shader->SetFloat("roughness", 0.2f);
 	reflection_shader->SetFloat("ambient_occlusion", 1.0f);
-
+	reflection_shader->SetInt("reflection_cube", 0);
 
 	auto model = glm::mat4(1.0f);
 
-
-
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cube);
-	model = glm::scale(model, glm::vec3(3, 3, 3));
-	model = glm::translate(model, glm::vec3(-2, 0, 0));
+	model = glm::translate(model, glm::vec3(-3.5, 0, 0));
 	reflection_shader->SetMat4("model", model);
-	reflection_shader->SetVec3("albedo", glm::vec3(0, 0, 1));
-	blue->Draw(reflection_shader);
+	reflection_shader->SetVec3("albedo", glm::vec3(1, 0, 0));
+	blue_sphere->Draw(reflection_shader);
 
-
-	model = glm::mat4(1.0f);
 	shader->UseShader();
-	model = glm::translate(model, glm::vec3(2, 0, 0));
+	model = glm::translate(model, glm::vec3(3.5, 0, 0));
 	shader->SetMat4("model", model);
-	shader->SetVec3("albedo", glm::vec3(1, 0, 0));
-	red->Draw(shader);
+	shader->SetVec3("albedo", glm::vec3(0, 0, 1));
+	red_sphere->Draw(shader);
 
 	for (unsigned int i = 0; i < 4; ++i)
 	{
@@ -299,70 +227,14 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-	/*--------------------*/
-	glActiveTexture(GL_TEXTURE7);
-	glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, cube);
+	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
 
-	const auto get_lookat = [](GLfloat pitch, GLfloat yaw, glm::vec3 position)
-	{
-		const glm::vec3 world_up(0.0f, 1.0f, 0.0f);
-		glm::vec3 front;
-		front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-		front.y = sin(glm::radians(pitch));
-		front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-		front = glm::normalize(front);
-
-		const auto right = glm::normalize(glm::cross(front, world_up));
-		const auto up = glm::normalize(glm::cross(right, front));
-
-		return glm::lookAt(position, position + front, up);
+	const auto render_function = [](glm::mat4 projection, glm::mat4 view) {
+		RenderScene(projection, view);
 	};
 
-	for (int face = 0; face < 6; face++)
-	{
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X + face, cube, 0);
-		GLfloat pitch = 0;
-		GLfloat yaw = 0;
-		const glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 100.0f);
-
-		switch (face)
-		{
-			case 0:
-				pitch = 0;
-				yaw = 90;
-				break;
-			case 1:
-				pitch = 0;
-				yaw = -90;
-				break;
-			case 2:
-				pitch = -90;
-				yaw = 180;
-				break;
-			case 3:
-				pitch = 90;
-				yaw = 180;
-				break;
-			case 4:
-				pitch = 0;
-				yaw = 180;
-				break;
-			case 5:
-				pitch = 0;
-				yaw = 0;
-				break;
-		};
-		RenderScene(projection, get_lookat(pitch, yaw, glm::vec3(-3.5,0,0) ));
-	}
-
-	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glActiveTexture(GL_TEXTURE0);
-
-	/*--------------------*/
-
-	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
+	dynamic->RenderCubemap(glm::vec3(-3.5, 0, 0), render_function);
+	dynamic->BindCubemap();
 	const glm::mat4 view = camera.GetView();
 	RenderScene(projection, view);
 

@@ -25,6 +25,8 @@ void main()
 	vec3 V = normalize(Position - camera_position);
 
 	
+
+	
 	vec4 reflection = texture(reflection_cube, reflect(V,N));
 
 
