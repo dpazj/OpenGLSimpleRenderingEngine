@@ -11,7 +11,7 @@
 class Shader{
 
 public:
-	Shader(const char* vertex_path, const char* fragment_path);
+	Shader(const char* vertex_path, const char* fragment_path, const char* geom_path = nullptr);
 	void UseShader();
 
 	void SetInt(const char* name, GLint value);
@@ -25,7 +25,7 @@ public:
 
 private: 
 
-	void LoadShader(const char* vertex_path, const char* fragment_path);
+	void LoadShader(const char* vertex_path, const char* fragment_path, const char* geom_path);
 	GLuint BuildShader(GLenum eShaderType, const std::string& shaderText);
 	GLuint BuildShaderProgram(std::string vertShaderStr, std::string fragShaderStr);
 	std::string ReadFile(const char* filePath);

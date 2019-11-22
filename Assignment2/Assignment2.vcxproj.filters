@@ -102,4 +102,8 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shaders\pbrreflection.frag" />
+    <None Include="..\shaders\pbrreflection.vert" />
+  </ItemGroup>
 </Project>

@@ -38,6 +38,7 @@ also includes the OpenGL extension initialisation*/
 #include "OpenJoeL/Shaders/Shader.h"
 #include "OpenJoeL/Meshes/ModelMesh.h"
 #include "OpenJoeL/Meshes/SphereMesh.h"
+#include "OpenJoeL/Meshes/CubeMesh.h"
 
 #include "OpenJoeL/Texture/Texture.h"
 
@@ -61,6 +62,7 @@ GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
 Shader* shader;
 Shader* reflection_shader;
 Shader* skybox_shader;
+
 
 Skybox* skybox;
 
@@ -87,6 +89,8 @@ glm::vec3 lightColors[] = {
 
 unsigned int loadTexture(char const* path);
 
+
+glm::vec3 blue_pos(3.5,0,0);
 
 void setup_inputs(GLWrapper* glw)
 {
@@ -115,6 +119,32 @@ void setup_inputs(GLWrapper* glw)
 		glfwSetWindowShouldClose(glw->getWindow(), GL_TRUE);
 	});
 
+	input_manager->AddKey(GLFW_KEY_J, []() {
+		blue_pos.x -= 0.05f;
+	});
+
+	input_manager->AddKey(GLFW_KEY_L, []() {
+		blue_pos.x += 0.05f;
+	});
+
+	input_manager->AddKey(GLFW_KEY_K, []() {
+		blue_pos.y -= 0.05f;
+	});
+
+	input_manager->AddKey(GLFW_KEY_I, []() {
+		blue_pos.y += 0.05f;
+	});
+
+	input_manager->AddKey(GLFW_KEY_U, []() {
+		blue_pos.z -= 0.05f;
+	});
+
+	input_manager->AddKey(GLFW_KEY_O, []() {
+		blue_pos.z += 0.05f;
+	});
+
+	
+
 }
 
 
@@ -132,6 +162,7 @@ void init(GLWrapper* glw)
 		shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
 		reflection_shader = new Shader("../shaders/pbrreflection.vert", "../shaders/pbrreflection.frag");
 
+		
 
 	}
 	catch (std::exception & e)
@@ -152,10 +183,13 @@ void init(GLWrapper* glw)
 	blue_sphere->Init();
 
 
-	dynamic = new DynamicCubemap(1024,1024);
+	dynamic = new DynamicCubemap(1024);
 
 	skybox_shader->UseShader();
 	skybox_shader->SetInt("skybox", 1);
+
+	reflection_shader->UseShader();
+	reflection_shader->SetInt("reflection_cube", 0);
 
 	const std::vector<std::string> skybox_paths = { "../skybox/right.png","../skybox/left.png" ,"../skybox/up.png" ,"../skybox/down.png","../skybox/back.png","../skybox/front.png" };
 	skybox = new Skybox(skybox_paths, skybox_shader);
@@ -164,7 +198,7 @@ void init(GLWrapper* glw)
 
 
 
-void RenderScene(glm::mat4 projection, glm::mat4 view)
+void RenderScene(glm::mat4 projection, glm::mat4 view, bool x = true)
 {
 	shader->UseShader();
 	shader->SetMat4("view", view);
@@ -181,19 +215,23 @@ void RenderScene(glm::mat4 projection, glm::mat4 view)
 	reflection_shader->SetFloat("metallic", 1.0f);
 	reflection_shader->SetFloat("roughness", 0.2f);
 	reflection_shader->SetFloat("ambient_occlusion", 1.0f);
-	reflection_shader->SetInt("reflection_cube", 0);
+
 
 	auto model = glm::mat4(1.0f);
 
-	model = glm::translate(model, glm::vec3(-3.5, 0, 0));
-	reflection_shader->SetMat4("model", model);
-	reflection_shader->SetVec3("albedo", glm::vec3(1, 0, 0));
-	blue_sphere->Draw(reflection_shader);
+	if (x) {
+		//model = glm::scale(model, glm::vec3(6, 6, 6));
+		model = glm::translate(model, glm::vec3(0, 0, 0));
+		reflection_shader->SetMat4("model", model);
+		reflection_shader->SetVec3("albedo", glm::vec3(0, 0, 1));
+		blue_sphere->Draw(reflection_shader);
+		model = glm::mat4(1.0f);
+	}
 
 	shader->UseShader();
-	model = glm::translate(model, glm::vec3(3.5, 0, 0));
+	model = glm::translate(model, blue_pos);
 	shader->SetMat4("model", model);
-	shader->SetVec3("albedo", glm::vec3(0, 0, 1));
+	shader->SetVec3("albedo", glm::vec3(1, 0, 0));
 	red_sphere->Draw(shader);
 
 	for (unsigned int i = 0; i < 4; ++i)
@@ -227,15 +265,18 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
+	
 
 	const auto render_function = [](glm::mat4 projection, glm::mat4 view) {
-		RenderScene(projection, view);
+		RenderScene(projection, view, false);
 	};
 
-	dynamic->RenderCubemap(glm::vec3(-3.5, 0, 0), render_function);
+	dynamic->RenderCubemap(glm::vec3(0, 0, 0), render_function);
 	dynamic->BindCubemap();
+
+	glViewport(0, 0, screen_width, screen_height);
 	const glm::mat4 view = camera.GetView();
+	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
 	RenderScene(projection, view);
 
 }
