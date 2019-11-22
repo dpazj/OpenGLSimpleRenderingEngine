@@ -5,9 +5,9 @@
 #include <fstream>
 #include <vector>
 
-Shader::Shader(const char* vertex_path, const char* fragment_path, const char* geom_path)
+Shader::Shader(const char* vertex_path, const char* fragment_path)
 {
-	LoadShader(vertex_path, fragment_path, geom_path);
+	LoadShader(vertex_path, fragment_path);
 }
 
 void Shader::UseShader()
@@ -101,9 +101,9 @@ std::string Shader::ReadFile(const char* filePath)
 	fileStream.close();
 	return content;
 }
-void Shader::LoadShader(const char* vertex_path, const char* fragment_path, const char* geom_path)
+void Shader::LoadShader(const char* vertex_path, const char* fragment_path)
 {
-	GLuint vertShader, fragShader, geometryShader;
+	GLuint vertShader, fragShader;
 
 	// Read shaders
 	std::string vertShaderStr = ReadFile(vertex_path);
@@ -115,22 +115,9 @@ void Shader::LoadShader(const char* vertex_path, const char* fragment_path, cons
 	vertShader = BuildShader(GL_VERTEX_SHADER, vertShaderStr);
 	fragShader = BuildShader(GL_FRAGMENT_SHADER, fragShaderStr);
 
-	if (geom_path != nullptr)
-	{
-		std::string geomShaderStr = ReadFile(geom_path);
-		geometryShader = BuildShader(GL_GEOMETRY_SHADER, geomShaderStr);
-	}
-
-
-
 	GLuint program = glCreateProgram();
 	glAttachShader(program, vertShader);
 	glAttachShader(program, fragShader);
-	if (geom_path != nullptr)
-	{
-		glAttachShader(program, geometryShader);
-	}
-
 	glLinkProgram(program);
 
 	glGetProgramiv(program, GL_LINK_STATUS, &result);
@@ -141,10 +128,6 @@ void Shader::LoadShader(const char* vertex_path, const char* fragment_path, cons
 
 	glDeleteShader(vertShader);
 	glDeleteShader(fragShader);
-	if (geom_path != nullptr)
-	{
-		glDeleteShader(geometryShader);
-	}
 
 	m_program = program;
 }

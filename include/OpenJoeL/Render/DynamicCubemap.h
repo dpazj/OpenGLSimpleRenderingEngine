@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include "OpenJoeL/Shaders/Shader.h"
 #include "FrameBuffer.h"
 
 #include <glload/gl_4_0.h>
@@ -12,7 +11,7 @@ class DynamicCubemap
 {
 public:
 
-	DynamicCubemap(GLuint size);
+	DynamicCubemap(GLuint width, GLuint height);
 	void RenderCubemap(glm::vec3 world_position, std::function<void(glm::mat4,glm::mat4)> render_scene);
 
 	void BindCubemap();
@@ -24,5 +23,4 @@ private:
 
 	GLuint m_cube_map = 0;
 
-	GLfloat m_size;
 };
