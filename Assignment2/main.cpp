@@ -75,6 +75,9 @@ Camera camera(glm::vec3(0, 0, 5));
 InputManager* input_manager;
 
 DynamicCubemap* dynamic;
+DynamicCubemap* red_dynamic;
+
+bool blue_render = true;
 
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
@@ -90,7 +93,7 @@ glm::vec3 lightColors[] = {
 unsigned int loadTexture(char const* path);
 
 
-glm::vec3 blue_pos(3.5,0,0);
+glm::vec3 blue_pos(-3.5,0,0);
 
 void setup_inputs(GLWrapper* glw)
 {
@@ -184,6 +187,7 @@ void init(GLWrapper* glw)
 
 
 	dynamic = new DynamicCubemap(1024);
+	red_dynamic = new DynamicCubemap(1024);
 
 	skybox_shader->UseShader();
 	skybox_shader->SetInt("skybox", 1);
@@ -198,7 +202,7 @@ void init(GLWrapper* glw)
 
 
 
-void RenderScene(glm::mat4 projection, glm::mat4 view, bool x = true)
+void RenderScene(glm::mat4 projection, glm::mat4 view, bool render_both, bool render_blue = true)
 {
 	shader->UseShader();
 	shader->SetMat4("view", view);
@@ -219,27 +223,40 @@ void RenderScene(glm::mat4 projection, glm::mat4 view, bool x = true)
 
 	auto model = glm::mat4(1.0f);
 
-	if (x) {
-		//model = glm::scale(model, glm::vec3(6, 6, 6));
-		model = glm::translate(model, glm::vec3(0, 0, 0));
+	if (render_both || render_blue) {
+		dynamic->BindCubemap();
+		reflection_shader->UseShader();
+		model = glm::translate(model, glm::vec3(blue_pos));
 		reflection_shader->SetMat4("model", model);
-		reflection_shader->SetVec3("albedo", glm::vec3(0, 0, 1));
+		reflection_shader->SetVec3("albedo", glm::vec3(0,0,1));
 		blue_sphere->Draw(reflection_shader);
-		model = glm::mat4(1.0f);
+		
+	}
+	model = glm::mat4(1.0f);
+	if (render_both || !render_blue)
+	{
+		red_dynamic->BindCubemap();
+		reflection_shader->UseShader();
+		model = glm::translate(model, glm::vec3(3.5, 0, 0));
+		reflection_shader->SetMat4("model", model);
+		reflection_shader->SetVec3("albedo", glm::vec3(1, 0, 0));
+		red_sphere->Draw(reflection_shader);
 	}
 
-	shader->UseShader();
-	model = glm::translate(model, blue_pos);
-	shader->SetMat4("model", model);
-	shader->SetVec3("albedo", glm::vec3(1, 0, 0));
-	red_sphere->Draw(shader);
+
+	
 
 	for (unsigned int i = 0; i < 4; ++i)
 	{
 		glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
 		newPos = lightPositions[i];
+		shader->UseShader();
 		shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), newPos);
 		shader->SetVec3(("light_colors[" + std::to_string(i) + "]").c_str(), lightColors[i]);
+
+		reflection_shader->UseShader();
+		reflection_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), newPos);
+		reflection_shader->SetVec3(("light_colors[" + std::to_string(i) + "]").c_str(), lightColors[i]);
 	}
 
 	{
@@ -265,19 +282,26 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
+	if (blue_render)
+	{
+		dynamic->RenderCubemap(blue_pos, [](glm::mat4 projection, glm::mat4 view) {
+			RenderScene(projection, view, false, false);
+		});
+	}
+	else
+	{
+		red_dynamic->RenderCubemap(glm::vec3(3.5,0,0), [](glm::mat4 projection, glm::mat4 view) {
+			RenderScene(projection, view, false, true);
+		});
+	}
 	
-
-	const auto render_function = [](glm::mat4 projection, glm::mat4 view) {
-		RenderScene(projection, view, false);
-	};
-
-	dynamic->RenderCubemap(glm::vec3(0, 0, 0), render_function);
-	dynamic->BindCubemap();
 
 	glViewport(0, 0, screen_width, screen_height);
 	const glm::mat4 view = camera.GetView();
 	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
-	RenderScene(projection, view);
+	RenderScene(projection, view, true);
+
+	blue_render = !blue_render;
 
 }
 

@@ -160,6 +160,12 @@
     <ClInclude Include="..\include\OpenJoeL\Utils\InputManager.h" />
     <ClInclude Include="..\include\wrapper_glfw.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shaders\pbr.frag" />
+    <None Include="..\shaders\pbr.vert" />
+    <None Include="..\shaders\pbrreflection.frag" />
+    <None Include="..\shaders\pbrreflection.vert" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

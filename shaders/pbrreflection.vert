@@ -15,7 +15,7 @@ void main()
 	vec4 h_pos =  vec4(position,1);
 
 	TextureCoordinates = texture_coordinates;
-	Position = position;
-	Normal = normal;
+	Position =  vec3(model * h_pos);
+	Normal = mat3(model) * normal;
 	gl_Position = projection * view * model * h_pos;
 }
