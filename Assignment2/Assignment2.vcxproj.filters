@@ -57,6 +57,9 @@
     <ClCompile Include="..\include\OpenJoeL\Render\DynamicCubemap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\include\OpenJoeL\Render\Render.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\wrapper_glfw.h">
@@ -99,6 +102,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\OpenJoeL\Render\DynamicCubemap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OpenJoeL\Render\Scene.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\OpenJoeL\Meshes\Object.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

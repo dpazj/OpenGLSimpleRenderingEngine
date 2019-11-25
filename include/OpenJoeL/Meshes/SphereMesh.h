@@ -5,6 +5,5 @@ class SphereMesh : public Mesh
 {
 public:
 	void Init();
-
 };
 

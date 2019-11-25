@@ -13,7 +13,7 @@ public:
 	Texture(const std::string& name, const std::string& path)
 	{
 		m_name = name;
-		m_id = loadTexture(path.c_str());
+		m_id = LoadTexture(path.c_str());
 		m_path = path;
 	}
 	GLuint GetID() { return m_id; }
@@ -27,7 +27,7 @@ private:
 	std::string m_path;
 	GLuint m_id;
 
-	unsigned int loadTexture(char const* path)
+	unsigned int LoadTexture(char const* path)
 	{
 		stbi_set_flip_vertically_on_load(true);
 		unsigned int textureID;

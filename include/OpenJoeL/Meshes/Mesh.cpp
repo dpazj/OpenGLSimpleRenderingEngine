@@ -30,8 +30,6 @@ void Mesh::Draw(Shader* shader)
 		}
 	}
 
-	
-
 	glBindVertexArray(0);
 }
 
@@ -81,4 +79,10 @@ void Mesh::SetCustomDraw(std::function<void()> draw_fun)
 {
 	m_has_custom_draw = true;
 	m_custom_draw = draw_fun;
+}
+
+
+Mesh Mesh::GetMesh()
+{
+	return *this;
 }

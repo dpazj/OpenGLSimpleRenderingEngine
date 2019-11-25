@@ -150,10 +150,12 @@
     <ClInclude Include="..\include\OpenJoeL\Meshes\CubeMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Mesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\ModelMesh.h" />
+    <ClInclude Include="..\include\OpenJoeL\Meshes\Object.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\SphereMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Torus.h" />
     <ClInclude Include="..\include\OpenJoeL\Render\DynamicCubemap.h" />
     <ClInclude Include="..\include\OpenJoeL\Render\FrameBuffer.h" />
+    <ClInclude Include="..\include\OpenJoeL\Render\Scene.h" />
     <ClInclude Include="..\include\OpenJoeL\Shaders\Shader.h" />
     <ClInclude Include="..\include\OpenJoeL\Texture\Texture.h" />
     <ClInclude Include="..\include\OpenJoeL\Utils\Camera.h" />

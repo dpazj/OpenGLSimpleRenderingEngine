@@ -40,6 +40,8 @@ also includes the OpenGL extension initialisation*/
 #include "OpenJoeL/Meshes/SphereMesh.h"
 #include "OpenJoeL/Meshes/CubeMesh.h"
 
+#include "OpenJoeL/Meshes/Object.h"
+
 #include "OpenJoeL/Texture/Texture.h"
 
 #include "OpenJoeL/Utils/Camera.h"
@@ -48,13 +50,13 @@ also includes the OpenGL extension initialisation*/
 
 #include "OpenJoeL/Render/DynamicCubemap.h"
 
+
+
 // Include headers for our objects
 
 GLint screen_width = 1680;
 GLint screen_height = 1050;
 GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
-
-
 
 
 //SHADERS
@@ -66,16 +68,14 @@ Shader* skybox_shader;
 
 Skybox* skybox;
 
-SphereMesh* red_sphere;
-SphereMesh* blue_sphere;
-
+PBRReflectObject* red_sphere;
+PBRReflectObject* blue_sphere;
 
 Camera camera(glm::vec3(0, 0, 5));
 
 InputManager* input_manager;
 
-DynamicCubemap* dynamic;
-DynamicCubemap* red_dynamic;
+
 
 bool blue_render = true;
 
@@ -123,27 +123,27 @@ void setup_inputs(GLWrapper* glw)
 	});
 
 	input_manager->AddKey(GLFW_KEY_J, []() {
-		blue_pos.x -= 0.05f;
+		blue_sphere->transform.position.x -= 0.05f;
 	});
 
 	input_manager->AddKey(GLFW_KEY_L, []() {
-		blue_pos.x += 0.05f;
+		blue_sphere->transform.position.x += 0.05f;
 	});
 
 	input_manager->AddKey(GLFW_KEY_K, []() {
-		blue_pos.y -= 0.05f;
+		blue_sphere->transform.position.y -= 0.05f;
 	});
 
 	input_manager->AddKey(GLFW_KEY_I, []() {
-		blue_pos.y += 0.05f;
+		blue_sphere->transform.position.y += 0.05f;
 	});
 
 	input_manager->AddKey(GLFW_KEY_U, []() {
-		blue_pos.z -= 0.05f;
+		blue_sphere->transform.position.z -= 0.05f;
 	});
 
 	input_manager->AddKey(GLFW_KEY_O, []() {
-		blue_pos.z += 0.05f;
+		blue_sphere->transform.position.z += 0.05f;
 	});
 
 	
@@ -153,7 +153,6 @@ void setup_inputs(GLWrapper* glw)
 
 void init(GLWrapper* glw)
 {
-	
 
 	input_manager->ProcessInput();
 
@@ -164,9 +163,6 @@ void init(GLWrapper* glw)
 		skybox_shader = new Shader("../shaders/skybox.vert", "../shaders/skybox.frag");
 		shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
 		reflection_shader = new Shader("../shaders/pbrreflection.vert", "../shaders/pbrreflection.frag");
-
-		
-
 	}
 	catch (std::exception & e)
 	{
@@ -179,21 +175,28 @@ void init(GLWrapper* glw)
 	shader->UseShader();
 
 	
-	red_sphere = new SphereMesh();
-	blue_sphere = new SphereMesh();
+	SphereMesh sphere;
+	sphere.Init();
 
-	red_sphere->Init();
-	blue_sphere->Init();
+	
+	red_sphere = new PBRReflectObject(sphere.GetMesh());
+	red_sphere->CreateDynamicCubeMap(1024);
+	red_sphere->SetPBRProperties(glm::vec3(1, 0, 0), 1, 0.2);
+	red_sphere->transform.Translate(glm::vec3(3.5, 0, 0));
 
+	blue_sphere = new PBRReflectObject(sphere.GetMesh());
+	blue_sphere->CreateDynamicCubeMap(1024);
+	blue_sphere->SetPBRProperties(glm::vec3(0, 0, 1), 1, 0.2);
+	blue_sphere->transform.Translate(glm::vec3(blue_pos));
 
-	dynamic = new DynamicCubemap(1024);
-	red_dynamic = new DynamicCubemap(1024);
+	
+
 
 	skybox_shader->UseShader();
 	skybox_shader->SetInt("skybox", 1);
 
 	reflection_shader->UseShader();
-	reflection_shader->SetInt("reflection_cube", 0);
+	reflection_shader->SetInt("reflection_cube", 10);
 
 	const std::vector<std::string> skybox_paths = { "../skybox/right.png","../skybox/left.png" ,"../skybox/up.png" ,"../skybox/down.png","../skybox/back.png","../skybox/front.png" };
 	skybox = new Skybox(skybox_paths, skybox_shader);
@@ -202,12 +205,12 @@ void init(GLWrapper* glw)
 
 
 
-void RenderScene(glm::mat4 projection, glm::mat4 view, bool render_both, bool render_blue = true)
+void RenderScene(glm::vec3 camera_pos, glm::mat4 projection, glm::mat4 view, bool render_both, bool render_blue = true)
 {
 	shader->UseShader();
 	shader->SetMat4("view", view);
 	shader->SetMat4("projection", projection);
-	shader->SetVec3("camera_position", camera.GetPosition());
+	shader->SetVec3("camera_position", camera_pos);
 	shader->SetFloat("metallic", 1.0f);
 	shader->SetFloat("roughness", 0.2f);
 	shader->SetFloat("ambient_occlusion", 1.0f);
@@ -215,36 +218,19 @@ void RenderScene(glm::mat4 projection, glm::mat4 view, bool render_both, bool re
 	reflection_shader->UseShader();
 	reflection_shader->SetMat4("view", view);
 	reflection_shader->SetMat4("projection", projection);
-	reflection_shader->SetVec3("camera_position", camera.GetPosition());
-	reflection_shader->SetFloat("metallic", 1.0f);
-	reflection_shader->SetFloat("roughness", 0.2f);
-	reflection_shader->SetFloat("ambient_occlusion", 1.0f);
-
+	reflection_shader->SetVec3("camera_position", camera_pos);
 
 	auto model = glm::mat4(1.0f);
-
+	reflection_shader->UseShader();
 	if (render_both || render_blue) {
-		dynamic->BindCubemap();
-		reflection_shader->UseShader();
-		model = glm::translate(model, glm::vec3(blue_pos));
-		reflection_shader->SetMat4("model", model);
-		reflection_shader->SetVec3("albedo", glm::vec3(0,0,1));
-		blue_sphere->Draw(reflection_shader);
 		
+		blue_sphere->Draw(reflection_shader);
 	}
 	model = glm::mat4(1.0f);
 	if (render_both || !render_blue)
 	{
-		red_dynamic->BindCubemap();
-		reflection_shader->UseShader();
-		model = glm::translate(model, glm::vec3(3.5, 0, 0));
-		reflection_shader->SetMat4("model", model);
-		reflection_shader->SetVec3("albedo", glm::vec3(1, 0, 0));
 		red_sphere->Draw(reflection_shader);
 	}
-
-
-	
 
 	for (unsigned int i = 0; i < 4; ++i)
 	{
@@ -284,14 +270,14 @@ void display()
 
 	if (blue_render)
 	{
-		dynamic->RenderCubemap(blue_pos, [](glm::mat4 projection, glm::mat4 view) {
-			RenderScene(projection, view, false, false);
+		blue_sphere->RenderCubemap([](glm::mat4 projection, glm::mat4 view) {
+			RenderScene(blue_pos,projection, view, false, false);
 		});
 	}
 	else
 	{
-		red_dynamic->RenderCubemap(glm::vec3(3.5,0,0), [](glm::mat4 projection, glm::mat4 view) {
-			RenderScene(projection, view, false, true);
+		red_sphere->RenderCubemap([](glm::mat4 projection, glm::mat4 view) {
+			RenderScene(glm::vec3(3.5,0,0),projection, view, false, true);
 		});
 	}
 	
@@ -299,7 +285,7 @@ void display()
 	glViewport(0, 0, screen_width, screen_height);
 	const glm::mat4 view = camera.GetView();
 	const glm::mat4 projection = glm::perspective(glm::radians(30.0f), aspect_ratio, 0.1f, 100.0f);
-	RenderScene(projection, view, true);
+	RenderScene(camera.GetPosition(),projection, view, true);
 
 	blue_render = !blue_render;
 

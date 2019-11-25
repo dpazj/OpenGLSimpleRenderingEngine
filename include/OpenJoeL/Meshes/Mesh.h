@@ -14,7 +14,7 @@ public:
 	Mesh();
 	void Draw(Shader* shader);
 	void SetMeshTextures(MeshTextures textures);
-
+	Mesh GetMesh();
 	
 
 protected:
@@ -81,6 +81,8 @@ protected:
 
 	void SetCustomDraw(std::function<void()> draw_fun);
 
+	
+
 protected:
 	GLuint m_indice_count = 0;
 
@@ -109,5 +111,4 @@ private:
 	bool m_has_custom_draw = false;
 	std::function<void()> m_custom_draw;
 	
-
 };
