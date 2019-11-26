@@ -19,11 +19,14 @@ void FrameBuffer::AddRenderBuffer(GLuint width, GLuint height)
 }
 
 
-void FrameBuffer::AttachColour(GLuint texture)
+void FrameBuffer::AttachTexture(GLuint texture, GLenum attachment ,GLenum target)
 {
 	
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X, texture, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, target, texture, 0);
 }
+
+void FrameBuffer::RemoveDrawBuffer() { glDrawBuffer(GL_NONE); }
+void FrameBuffer::RemoveReadBuffer() { glReadBuffer(GL_NONE); }
 
 void FrameBuffer::CheckFrameBufferStatus()
 {

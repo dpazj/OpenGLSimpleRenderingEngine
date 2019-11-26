@@ -134,6 +134,7 @@
     <ClCompile Include="..\include\OpenJoeL\Meshes\CubeMesh.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Meshes\Mesh.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Meshes\ModelMesh.cpp" />
+    <ClCompile Include="..\include\OpenJoeL\Meshes\PlaneMesh.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Meshes\SphereMesh.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Meshes\Torus.cpp" />
     <ClCompile Include="..\include\OpenJoeL\Render\DynamicCubemap.cpp" />
@@ -147,14 +148,17 @@
   <ItemGroup>
     <ClInclude Include="..\include\OpenJoeL\Environment\Skybox.h" />
     <ClInclude Include="..\include\OpenJoeL\Lighting\Lighting.h" />
+    <ClInclude Include="..\include\OpenJoeL\Lighting\Shadows.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\CubeMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Mesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\ModelMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Object.h" />
+    <ClInclude Include="..\include\OpenJoeL\Meshes\PlaneMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\SphereMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Torus.h" />
     <ClInclude Include="..\include\OpenJoeL\Render\DynamicCubemap.h" />
     <ClInclude Include="..\include\OpenJoeL\Render\FrameBuffer.h" />
+    <ClInclude Include="..\include\OpenJoeL\Render\Renderer.h" />
     <ClInclude Include="..\include\OpenJoeL\Render\Scene.h" />
     <ClInclude Include="..\include\OpenJoeL\Shaders\Shader.h" />
     <ClInclude Include="..\include\OpenJoeL\Texture\Texture.h" />

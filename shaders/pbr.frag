@@ -9,9 +9,10 @@
 out vec4 outputColor;
 in vec2 TextureCoordinates;
 in vec3 Position, Normal;
+in vec4 PositionLightSpace;
 
 uniform vec3 camera_position;
-
+uniform sampler2D shadow_map;
 
 uniform vec3 albedo;
 uniform float metallic;
@@ -22,6 +23,7 @@ uniform float ambient_occlusion;
 // lights
 uniform vec3 light_positions[4];
 uniform vec3 light_colors[4];
+uniform vec3 light_pos;
 
 const float PI = 3.14159265359;
 
@@ -66,6 +68,22 @@ float calculate_distribution(vec3 N, vec3 Half, float roughness) //Trowbridge-Re
 	return alpha2 / max(denom,0.0000001);
 }
 
+
+float calculate_shadow()
+{
+	vec3 projected = PositionLightSpace.xyz / PositionLightSpace.w;
+	projected = projected * 0.5 + 0.5; 
+
+	float closest = texture(shadow_map, projected.xy).r;
+	float current = projected.z;
+
+	float bias = max(0.05 * (1.0 - dot(Normal, normalize(light_positions[0] - Position))), 0.005);
+
+    float shadow = current - bias > closest  ? 1.0 : 0.0;
+
+	return shadow;
+}
+
 void main()
 {
 	
@@ -103,7 +121,9 @@ void main()
 		LightOutput += (KD * albedo / PI + Specular) * radiance * n_dot_l;	
 	}
 
-	vec3 ambient = vec3(0.03) * albedo * ambient_occlusion;
+	float shadow = calculate_shadow();
+
+	vec3 ambient = vec3(0.03) * albedo * (ambient_occlusion + (1.0 - shadow));
 	vec3 colour = ambient + LightOutput;
 	
 	//Gamma and HDR
@@ -112,6 +132,7 @@ void main()
 
 
 	outputColor = vec4(colour,1.0);
+
 }
 
 

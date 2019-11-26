@@ -25,7 +25,7 @@ DynamicCubemap::DynamicCubemap(GLuint size)
 	m_frame_buffer = new FrameBuffer();
 	m_frame_buffer->Bind();
 	m_frame_buffer->AddRenderBuffer(size, size);
-	m_frame_buffer->AttachColour(m_cube_map);
+	m_frame_buffer->AttachTexture(m_cube_map, GL_COLOR_ATTACHMENT0, GL_TEXTURE_CUBE_MAP_POSITIVE_X);
 	m_frame_buffer->CheckFrameBufferStatus();
 	m_frame_buffer->Unbind();
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
