@@ -40,6 +40,7 @@ also includes the OpenGL extension initialisation*/
 #include "OpenJoeL/Meshes/SphereMesh.h"
 #include "OpenJoeL/Meshes/CubeMesh.h"
 #include "OpenJoeL/Meshes/PlaneMesh.h"
+#include "OpenJoeL/Meshes/ModelMesh.h"
 
 #include "OpenJoeL/Meshes/Object.h"
 
@@ -62,48 +63,39 @@ GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
 
 
 //SHADERS
-//std::shared_ptr<Shader> shader;
-Shader* shadow_shader;
-Shader* debug;
+Shader* point_shadow_shader;
 Shader* pbr_shader;
+Shader* pbr_texture_shader;
 
-PBRObject* cube1;
-PBRObject* cube2;
-PBRObject* cube3;
-PBRObject* plane;
+//Objects
+
+PBRObject* cube;
+
+PBRTexturedObject* tabletop;
+PBRTexturedObject* tablebot;
+PBRTexturedObject* candle_holder1;
+PBRTexturedObject* candle_holder2;
 
 
+
+//OTHER
 Camera camera(glm::vec3(0, 2, 5));
 InputManager* input_manager;
 
-
-DirectionalShadowMap * shadow_map;
-
-
-bool blue_render = true;
+PointShadowMap* point_shadow_map;
 
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
 
-glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
-
-glm::vec3 lightPositions[] = {
-	glm::vec3(0.0f, 4.0f, 0.0f)
+std::vector<glm::vec3> light_positions = {
+	glm::vec3(0,6,0)
 };
-glm::vec3 lightColors[] = {
-	glm::vec3(300.0f, 300.0f, 300.0f)
+
+std::vector<glm::vec3> light_colours = {
+	glm::vec3(1,1,1)
 };
 
 unsigned int loadTexture(char const* path);
-
-
-
-unsigned int planeVBO, planeVAO;
-unsigned int woodTexture;
-unsigned int depthMapFBO;
-unsigned int depthMap;
-
-
 
 
 void setup_inputs(GLWrapper* glw)
@@ -133,6 +125,25 @@ void setup_inputs(GLWrapper* glw)
 		glfwSetWindowShouldClose(glw->getWindow(), GL_TRUE);
 	});
 
+	input_manager->AddKey(GLFW_KEY_J, [glw]() {
+		candle_holder1->transform.position.x += 0.001;
+	});
+	input_manager->AddKey(GLFW_KEY_L, [glw]() {
+		candle_holder1->transform.position.x -= 0.001;
+	});
+	input_manager->AddKey(GLFW_KEY_I, [glw]() {
+		candle_holder1->transform.position.y += 0.001;
+	});
+	input_manager->AddKey(GLFW_KEY_K, [glw]() {
+		candle_holder1->transform.position.y -= 0.001;
+	});
+
+	input_manager->AddKey(GLFW_KEY_U, [glw]() {
+		candle_holder1->transform.position.z += 0.001;
+	});
+	input_manager->AddKey(GLFW_KEY_O, [glw]() {
+		candle_holder1->transform.position.z -= 0.001;
+	});
 }
 
 
@@ -144,8 +155,10 @@ void init(GLWrapper* glw)
 	{
 
 		pbr_shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
-		shadow_shader = new Shader("../shaders/directionalshadow.vert", "../shaders/directionalshadow.frag");
-		debug = new Shader("../shaders/debug.vert", "../shaders/debug.frag");
+		point_shadow_shader = new Shader("../shaders/pointshadow.vert", "../shaders/pointshadow.frag", "../shaders/pointshadow.gs");
+
+		pbr_texture_shader = new Shader("../shaders/pbrtexture.vert", "../shaders/pbrtexture.frag");
+
 
 	}
 	catch (std::exception & e)
@@ -156,65 +169,79 @@ void init(GLWrapper* glw)
 	}
 
 	setup_inputs(glw);
-	
-	debug->UseShader();
-	debug->SetInt("shadow_map", 7);
 
-	pbr_shader->UseShader();
-	pbr_shader->SetInt("shadow_map", 7);
-	
+	PBRTextures tabletop_textures("../models/wooden-table/textures/topalbedo.png", "../models/wooden-table/textures/topnormal.png", "../models/wooden-table/textures/metallic.png", "../models/wooden-table/textures/topsmooth.png", "../models/wooden-table/textures/ao.png");
+	PBRTextures tablebot_textures("../models/wooden-table/textures/botalbedo.png", "../models/wooden-table/textures/botnormal.png", "../models/wooden-table/textures/metallic.png", "../models/wooden-table/textures/botsmooth.png", "../models/wooden-table/textures/ao.png");
 
-	SphereMesh spheremesh;
-	spheremesh.Init();
-	
-	PlaneMesh planemesh;
-	planemesh.Init();
+	ModelMesh tabletop_mesh;
+	tabletop_mesh.SetMeshTextures(tabletop_textures);
+	tabletop_mesh.LoadObject("../models/wooden-table/top.obj");
+	tabletop = new PBRTexturedObject(tabletop_mesh.GetMesh());
+	tabletop->transform.Scale(0.2f);
 
-	plane = new PBRObject(planemesh.GetMesh());
-	plane->transform.Scale(5.0f);
-	plane->transform.Translate(glm::vec3(0,-0.2,0));
-	plane->SetPBRProperties(glm::vec3(1,0,0));
+	ModelMesh tablebot_mesh;
+	tablebot_mesh.SetMeshTextures(tablebot_textures);
+	tablebot_mesh.LoadObject("../models/wooden-table/bot.obj");
+	tablebot = new PBRTexturedObject(tablebot_mesh.GetMesh());
+	tablebot->transform.Scale(0.2f);
 
-	cube1 = new PBRObject(spheremesh.GetMesh());
-	cube1->SetPBRProperties(glm::vec3(0, 1, 0));
-	cube1->transform.Scale(.5f);
-	cube1->transform.Translate(glm::vec3(0, 1.5f, 0));
+	PBRTextures candle_textures("../models/candle-holder/textures/albedo.png", "../models/candle-holder/textures/normal.png", "../models/candle-holder/textures/metallic.png", "../models/candle-holder/textures/roughness.png", "../models/candle-holder/textures/ao.png");
+	ModelMesh candle_mesh;
+	candle_mesh.SetMeshTextures(candle_textures);
+	candle_mesh.LoadObject("../models/candle-holder/candle.obj");
+	candle_holder1 = new PBRTexturedObject(candle_mesh.GetMesh());
+	candle_holder1->transform.Scale(2.0f);
+	candle_holder1->transform.Rotate(90, Transform::Y);
+	candle_holder1->transform.Translate(glm::vec3(-1.473f,5.596,-2.78));
 
-	cube2 = new PBRObject(spheremesh.GetMesh());
-	cube2->SetPBRProperties(glm::vec3(0, 0, 1));
-	cube2->transform.Scale(.5f);
-	cube2->transform.Translate(glm::vec3(2, 0.0, 1.0));
+	candle_holder2 = new PBRTexturedObject(candle_mesh.GetMesh());
+	candle_holder2->transform.Scale(2.0f);
+	candle_holder2->transform.Rotate(270, Transform::Y);
+	candle_holder2->transform.Translate(glm::vec3(-1.473f, 5.596, 2.78));
 
-	cube3 = new PBRObject(spheremesh.GetMesh());
-	cube3->SetPBRProperties(glm::vec3(0, 1, 1));
-	cube3->transform.Scale(.25f);
-	cube3->transform.Translate(glm::vec3(-1, 0, 2));
 
-	shadow_map = new DirectionalShadowMap(1024);
+	CubeMesh x; 
+	x.Init();
+	cube = new PBRObject(x);
 
 }
 
 
-
-void RenderScene(glm::vec3 camera_pos, glm::mat4 projection, glm::mat4 view, Shader* shader)
+void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader * shader)
 {
 	shader->UseShader();
-	shader->SetVec3("light_positions[0]", lightPos);
-	shader->SetVec3("light_colors[0]", glm::vec3(1,1,1));
-	shader->SetVec3("camera_position", camera_pos);
-	shader->SetMat4("lightspacemat", shadow_map->GetMatrix());
-
 	shader->SetMat4("projection", projection);
-	shader->SetMat4("view",view);
+	shader->SetMat4("view", view);
+	shader->SetVec3("camera_position", camera_pos);
 
-	cube1->Draw(shader);
-	cube2->Draw(shader);
-	cube3->Draw(shader);
-	plane->Draw(shader);
+	tabletop->Draw(shader);
+	tablebot->Draw(shader);
 
+	candle_holder1->Draw(shader);
+	candle_holder2->Draw(shader);
 
-	   	  
+	std::cout << candle_holder1->transform.position.x << " " << candle_holder1->transform.position.y << " " << candle_holder1->transform.position.z <<  std::endl;
 }
+
+void RenderPBR(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader* shader)
+{
+	shader->UseShader();
+	shader->SetMat4("projection", projection);
+	shader->SetMat4("view", view);
+	shader->SetVec3("camera_position", camera_pos);
+
+	//cube->Draw(shader);
+}
+
+void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos)
+{
+
+	RenderPBRTexture(projection, view, camera_pos, pbr_texture_shader);
+	RenderPBR(projection, view, camera_pos, pbr_shader);
+
+}
+
+
 
 void display()
 {
@@ -225,29 +252,28 @@ void display()
 	input_manager->ProcessInput();
 
 	glEnable(GL_DEPTH_TEST);
-	//glClearColor(0.859375f, 0.859375f, 0.859375f, 1.0f);
-	glClearColor(0, 0, 0, 1.0f);
+	glClearColor(0.859375f, 0.859375f, 0.859375f, 1.0f);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-
-	//SHADOW MAPPING
-	shadow_map->RenderShadowMap(lightPos, [](glm::mat4 proj, glm::mat4 view) {
-		RenderScene(lightPos, proj, view, shadow_shader);
-	});
-
-
-	// reset viewport
+	
 	glViewport(0, 0, screen_width, screen_height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-	//PROPERDRAW
-	glm::mat4 projection = glm::perspective(glm::radians(10.f), aspect_ratio, 0.1f, 100.0f);
-	glm::mat4 view = camera.GetView();
+	//PROPER DRAW
+	glm::mat4 projection = glm::perspective(glm::radians(45.f), aspect_ratio, 0.1f, 100.0f);
+	RenderScene(projection, camera.GetView(), camera.GetPosition());
+	
+	//LIGHTING
+	
+	for (int i = 0; i < light_positions.size(); i++)
+	{
+		pbr_texture_shader->UseShader();
+		pbr_texture_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
+		pbr_texture_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
 
-	shadow_map->BindShadowMap();
-	RenderScene(camera.GetPosition(), projection, view, pbr_shader);
+	}
 
 }
 

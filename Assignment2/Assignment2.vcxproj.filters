@@ -125,5 +125,7 @@
     <None Include="..\shaders\pbr.vert" />
     <None Include="..\shaders\pbrreflection.frag" />
     <None Include="..\shaders\pbrreflection.vert" />
+    <None Include="..\shaders\pbrtexture.frag" />
+    <None Include="..\shaders\pbrtexture.vert" />
   </ItemGroup>
 </Project>

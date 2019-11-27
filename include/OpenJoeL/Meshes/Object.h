@@ -24,11 +24,12 @@ public:
 
 	glm::mat4 GetModel(glm::mat4 i)
 	{
-		i = glm::scale(i, scale);
+		i = glm::translate(i, position);
+	
 		i = glm::rotate(i, x_angle, glm::vec3(1, 0, 0));
 		i = glm::rotate(i, y_angle, glm::vec3(0, 1, 0));
 		i = glm::rotate(i, z_angle, glm::vec3(0, 0, 1));
-		i = glm::translate(i, position);
+		i = glm::scale(i, scale);
 		
 
 		return i;
@@ -124,6 +125,23 @@ private:
 	GLfloat m_metallic = 1.0f;
 	GLfloat m_roughness = 0.05f;
 	GLfloat m_ambient_occlusion = 1.0f;
+};
+
+
+
+class PBRTexturedObject : public Object
+{
+public:
+	PBRTexturedObject(Mesh mesh) : Object(mesh)
+	{
+	};
+
+	void Draw(Shader* shader, glm::mat4 idendity = glm::mat4(1.0f)) override
+	{
+		shader->SetMat4("model", transform.GetModel(idendity));
+		m_mesh.Draw(shader);
+	};
+
 };
 
 

@@ -12,7 +12,13 @@ in vec3 Position, Normal;
 in vec4 PositionLightSpace;
 
 uniform vec3 camera_position;
-uniform sampler2D shadow_map;
+
+
+//uniform sampler2D shadow_map;
+uniform sampler2D texture_map;
+uniform samplerCube shadow_map;
+uniform float far_plane;
+
 
 uniform vec3 albedo;
 uniform float metallic;
@@ -21,9 +27,9 @@ uniform float ambient_occlusion;
 
 
 // lights
-uniform vec3 light_positions[4];
+//uniform vec3 light_positions[4];
 uniform vec3 light_colors[4];
-uniform vec3 light_pos;
+uniform vec3 lightPos;
 
 const float PI = 3.14159265359;
 
@@ -68,107 +74,136 @@ float calculate_distribution(vec3 N, vec3 Half, float roughness) //Trowbridge-Re
 	return alpha2 / max(denom,0.0000001);
 }
 
+vec3 gridsamples[20] = vec3[]
+(
+   vec3(1, 1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1, 1,  1), 
+   vec3(1, 1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
+   vec3(1, 1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1, 1,  0),
+   vec3(1, 0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1, 0, -1),
+   vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
+);
 
 float calculate_shadow()
 {
-	vec3 projected = PositionLightSpace.xyz / PositionLightSpace.w;
-	projected = projected * 0.5 + 0.5; 
+	vec3 tolight = Position - lightPos;
+	float current = length(tolight);
 
-	float closest = texture(shadow_map, projected.xy).r;
-	float current = projected.z;
+	float shadow = 0.0;
+	float bias   = 0.15;
+	int samples  = 20;
+	float viewDistance = length(camera_position - Position);
+	float diskRadius = (1.0 + (viewDistance / far_plane)) / 50.0;  
+	for(int i = 0; i < samples; ++i)
+	{
+		float closest = texture(shadow_map, tolight + gridsamples[i] * diskRadius).r;
+		closest *= far_plane;   // Undo mapping [0;1]
+		if(current - bias > closest)
+			shadow += 1.0;
+	}
+	shadow /= float(samples); 
 
-	float bias = max(0.05 * (1.0 - dot(Normal, normalize(light_positions[0] - Position))), 0.01);
-
-    float shadow = 0.0;
-
-	vec2 texelSize = 1.0 / textureSize(shadow_map, 0);
-    for(int x = -1; x <= 1; ++x)
-    {
-        for(int y = -1; y <= 1; ++y)
-        {
-            float pcfDepth = texture(shadow_map, projected.xy + vec2(x, y) * texelSize).r; 
-            shadow += current - bias > pcfDepth  ? 1.0 : 0.0;        
-        }    
-    }
-    shadow /= 9.0;
-    
- 
-    if(projected.z > 1.0)
-        shadow = 0.0;
-        
-    return shadow;
-	
+	return shadow;
 }
+
+//float calculate_shadow()
+//{
+//	vec3 projected = PositionLightSpace.xyz / PositionLightSpace.w;
+//	projected = projected * 0.5 + 0.5; 
+//
+//	float closest = texture(shadow_map, projected.xy).r;
+//	float current = projected.z;
+//
+//	float bias = max(0.05 * (1.0 - dot(Normal, normalize(light_positions[0] - Position))), 0.05);
+//
+//    float shadow = 0.0;
+//
+//	vec2 texelSize = 1.0 / textureSize(shadow_map, 0);
+//    for(int x = -1; x <= 1; ++x)
+//    {
+//        for(int y = -1; y <= 1; ++y)
+//        {
+//            float pcfDepth = texture(shadow_map, projected.xy + vec2(x, y) * texelSize).r; 
+//            shadow += current - bias > pcfDepth  ? 1.0 : 0.0;        
+//        }    
+//    }
+//    shadow /= 9.0;
+//    
+// 
+//    if(projected.z > 1.0)
+//        shadow = 0.0;
+//        
+//    return shadow;	
+//}
 
 void main()
 {
 	
-	vec3 N = normalize(Normal);//normalize(Normal);
-	vec3 V = normalize(camera_position - Position);
-
-	vec3 F0 = vec3(0.04); //non metalic surface this value is always 0.04
-	F0 = mix(F0, albedo, metallic); //depeneding "metallicness" on the surface we adjust this value
-
-	vec3 LightOutput = vec3(0.0f);
-
-	for(int i = 0; i < 1; i++)
-	{
-		vec3 LightDir = normalize(light_positions[i] - Position);
-		vec3 Half = normalize(V + LightDir);
-
-		float distance_to_light = length(light_positions[i] - Position);
-		float attenuation = 1.0 / (distance_to_light * distance_to_light); //turn this into the quadratic 
-		vec3 radiance = light_colors[i] * attenuation;
-
-		vec3 Fresnel = calculate_fresnel(max(dot(Half,V),0.0),F0);
-		float distribution = calculate_distribution(N,Half,roughness);
-		float geometry = calculate_geometry(N,V,LightDir,roughness);
-
-		vec3 DFG = distribution * geometry * Fresnel;
-		float denom = 4 * ( max(dot(N, V),0.0) * max(dot(N, LightDir),0.0));
-		vec3 Specular = DFG / max(denom,0.001);
-
-		vec3 KS = Fresnel;
-		vec3 KD = vec3(1.0) - KS;
-		KD *= 1.0 - metallic;
-
-		float n_dot_l = max(dot(N,LightDir),0.0);
-
-		float shadow = calculate_shadow();
-
-		LightOutput += ((KD * albedo / PI + Specular) + (-0.5 * shadow)) * radiance * n_dot_l;	
-	}
-
-
-	vec3 ambient = (vec3(0.03) * albedo * (ambient_occlusion));
-	vec3 colour = ambient + LightOutput;
-	
-	//Gamma and HDR
-	colour = colour / (colour + vec3(1.0));
-	colour = pow(colour, vec3(1.0/2.2)); 
-	outputColor = vec4(colour,1.0);
-
-//	vec3 color = albedo;
-//    vec3 normal = normalize(Normal);
-//    vec3 lightColor = vec3(0.3);
-//    // ambient
-//    vec3 ambient = 0.3 * color;
-//    // diffuse
-//    vec3 lightDir = normalize(light_positions[0] - Position);
-//    float diff = max(dot(lightDir, normal), 0.0);
-//    vec3 diffuse = diff * lightColor;
-//    // specular
-//    vec3 viewDir = normalize(camera_position - Position);
-//    vec3 reflectDir = reflect(-lightDir, normal);
-//    float spec = 0.0;
-//    vec3 halfwayDir = normalize(lightDir + viewDir);  
-//    spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
-//    vec3 specular = spec * lightColor;    
-//    // calculate shadow
-//    float shadow = calculate_shadow();                      
-//    vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color;    
+//	vec3 N = normalize(Normal);//normalize(Normal);
+//	vec3 V = normalize(camera_position - Position);
 //
-//	outputColor = vec4(lighting, 1.0);
+//	vec3 F0 = vec3(0.04); //non metalic surface this value is always 0.04
+//	F0 = mix(F0,albedo, metallic); //depeneding "metallicness" on the surface we adjust this value
+//
+//	vec3 LightOutput = vec3(0.0f);
+//
+//	for(int i = 0; i < 1; i++)
+//	{
+//		vec3 LightDir = normalize(light_positions[i] - Position);
+//		vec3 Half = normalize(V + LightDir);
+//
+//		float distance_to_light = length(light_positions[i] - Position);
+//		float attenuation = 1.0 / (distance_to_light * distance_to_light); //turn this into the quadratic 
+//		vec3 radiance = light_colors[i] * attenuation;
+//
+//		vec3 Fresnel = calculate_fresnel(max(dot(Half,V),0.0),F0);
+//		float distribution = calculate_distribution(N,Half,roughness);
+//		float geometry = calculate_geometry(N,V,LightDir,roughness);
+//
+//		vec3 DFG = distribution * geometry * Fresnel;
+//		float denom = 4 * ( max(dot(N, V),0.0) * max(dot(N, LightDir),0.0));
+//		vec3 Specular = DFG / max(denom,0.001);
+//
+//		vec3 KS = Fresnel;
+//		vec3 KD = vec3(1.0) - KS;
+//		KD *= 1.0 - metallic;
+//
+//		float n_dot_l = max(dot(N,LightDir),0.0);
+//
+//		float shadow = calculate_shadow();
+//
+//		LightOutput += ((KD * albedo / PI + Specular) + (-shadow)) * radiance * n_dot_l;	
+//	}
+//
+//
+//	vec3 ambient = (vec3(0.03) * albedo * (ambient_occlusion));
+//	vec3 colour = ambient + LightOutput;
+//	
+//	//Gamma and HDR
+//	colour = colour / (colour + vec3(1.0));
+//	colour = pow(colour, vec3(1.0/2.2)); 
+//	outputColor = vec4(colour,1.0);
+
+	vec3 color = texture(texture_map, TextureCoordinates).rgb;
+    vec3 normal = normalize(Normal);
+    vec3 lightColor = vec3(0.3);
+    // ambient
+    vec3 ambient = 0.3 * color;
+    // diffuse
+    vec3 lightDir = normalize(lightPos - Position);
+    float diff = max(dot(lightDir, normal), 0.0);
+    vec3 diffuse = diff * lightColor;
+    // specular
+    vec3 viewDir = normalize(camera_position - Position);
+    vec3 reflectDir = reflect(-lightDir, normal);
+    float spec = 0.0;
+    vec3 halfwayDir = normalize(lightDir + viewDir);  
+    spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
+    vec3 specular = spec * lightColor;    
+    // calculate shadow
+    float shadow = calculate_shadow();                      
+    vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color;    
+
+	outputColor = vec4(lighting, 1.0);
 
 }
 

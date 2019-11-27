@@ -19,7 +19,12 @@ void FrameBuffer::AddRenderBuffer(GLuint width, GLuint height)
 }
 
 
-void FrameBuffer::AttachTexture(GLuint texture, GLenum attachment ,GLenum target)
+void FrameBuffer::AttachTexture(GLuint texture)
+{
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, texture, 0);
+}
+
+void FrameBuffer::Attach2DTexture(GLuint texture, GLenum attachment ,GLenum target)
 {
 	
 	glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, target, texture, 0);

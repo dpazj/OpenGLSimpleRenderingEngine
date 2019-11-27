@@ -14,7 +14,8 @@ public:
 	void Unbind();
 	void Clear();
 	void AddRenderBuffer(GLuint width, GLuint height);
-	void AttachTexture(GLuint texture, GLenum attachment, GLenum target = GL_TEXTURE_2D);
+	void Attach2DTexture(GLuint texture, GLenum attachment, GLenum target = GL_TEXTURE_2D);
+	void AttachTexture(GLuint texture);
 
 	void RemoveDrawBuffer();
 	void RemoveReadBuffer();
