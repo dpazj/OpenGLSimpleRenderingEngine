@@ -69,6 +69,7 @@ Shader* pbr_shader;
 
 PBRObject* cube1;
 PBRObject* cube2;
+PBRObject* cube3;
 PBRObject* plane;
 
 
@@ -84,7 +85,7 @@ bool blue_render = true;
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
 
-glm::vec3 lightPos(0, 4.0f, -1);
+glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
 
 glm::vec3 lightPositions[] = {
 	glm::vec3(0.0f, 4.0f, 0.0f)
@@ -163,7 +164,7 @@ void init(GLWrapper* glw)
 	pbr_shader->SetInt("shadow_map", 7);
 	
 
-	CubeMesh spheremesh;
+	SphereMesh spheremesh;
 	spheremesh.Init();
 	
 	PlaneMesh planemesh;
@@ -171,17 +172,23 @@ void init(GLWrapper* glw)
 
 	plane = new PBRObject(planemesh.GetMesh());
 	plane->transform.Scale(5.0f);
+	plane->transform.Translate(glm::vec3(0,-0.2,0));
 	plane->SetPBRProperties(glm::vec3(1,0,0));
 
 	cube1 = new PBRObject(spheremesh.GetMesh());
 	cube1->SetPBRProperties(glm::vec3(0, 1, 0));
-	cube1->transform.Scale(2.0f);
-	cube1->transform.Translate(glm::vec3(1, 1, 0));
+	cube1->transform.Scale(.5f);
+	cube1->transform.Translate(glm::vec3(0, 1.5f, 0));
 
 	cube2 = new PBRObject(spheremesh.GetMesh());
 	cube2->SetPBRProperties(glm::vec3(0, 0, 1));
-	cube2->transform.Scale(1.0f);
-	cube2->transform.Translate(glm::vec3(-1, 0.5, 0));
+	cube2->transform.Scale(.5f);
+	cube2->transform.Translate(glm::vec3(2, 0.0, 1.0));
+
+	cube3 = new PBRObject(spheremesh.GetMesh());
+	cube3->SetPBRProperties(glm::vec3(0, 1, 1));
+	cube3->transform.Scale(.25f);
+	cube3->transform.Translate(glm::vec3(-1, 0, 2));
 
 	shadow_map = new DirectionalShadowMap(1024);
 
@@ -202,6 +209,7 @@ void RenderScene(glm::vec3 camera_pos, glm::mat4 projection, glm::mat4 view, Sha
 
 	cube1->Draw(shader);
 	cube2->Draw(shader);
+	cube3->Draw(shader);
 	plane->Draw(shader);
 
 

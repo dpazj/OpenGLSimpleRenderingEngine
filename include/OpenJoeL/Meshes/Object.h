@@ -24,12 +24,12 @@ public:
 
 	glm::mat4 GetModel(glm::mat4 i)
 	{
-		
+		i = glm::scale(i, scale);
 		i = glm::rotate(i, x_angle, glm::vec3(1, 0, 0));
 		i = glm::rotate(i, y_angle, glm::vec3(0, 1, 0));
 		i = glm::rotate(i, z_angle, glm::vec3(0, 0, 1));
 		i = glm::translate(i, position);
-		i = glm::scale(i, scale);
+		
 
 		return i;
 	}
@@ -156,7 +156,7 @@ public:
 		m_reflection_cubemap->RenderCubemap(transform.position, render_function);
 	}
 
-	void SetPBRProperties(glm::vec3 albedo, GLfloat metallic = 1.0f, GLfloat roughness = 0.2f, GLfloat ambient_occlusion = 1.0f)
+	void SetPBRProperties(glm::vec3 albedo, GLfloat metallic = 1.0f, GLfloat roughness = 0.8f, GLfloat ambient_occlusion = 1.0f)
 	{
 		m_albedo = albedo;
 		m_metallic = metallic;

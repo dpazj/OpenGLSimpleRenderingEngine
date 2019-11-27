@@ -1,77 +1,83 @@
 #include "SphereMesh.h"
 
 
-void SphereMesh::Init()
+void SphereMesh::Init(GLuint lats, GLuint longs)
 {
-
+	GLuint numvertices = 2 + ((lats - 1) * longs);
+	GLuint i, j;
 	
-
-	std::vector<glm::vec3> positions;
-	std::vector<glm::vec2> uv;
-	std::vector<glm::vec3> normals;
+	std::vector<GLfloat> positions = std::vector<GLfloat>(numvertices * 3, 0.0f);
+	std::vector<GLfloat> uv = std::vector<GLfloat>(numvertices * 2, 0.0f);
+	std::vector<GLfloat> normals;
 	std::vector<unsigned int> indices;
 
-	const unsigned int X_SEGMENTS = 64;
-	const unsigned int Y_SEGMENTS = 64;
-	const float PI = 3.14159265359;
-	for (unsigned int y = 0; y <= Y_SEGMENTS; ++y)
-	{
-		for (unsigned int x = 0; x <= X_SEGMENTS; ++x)
-		{
-			float xSegment = (float)x / (float)X_SEGMENTS;
-			float ySegment = (float)y / (float)Y_SEGMENTS;
-			float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
-			float yPos = std::cos(ySegment * PI);
-			float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
-
-			positions.push_back(glm::vec3(xPos, yPos, zPos));
-			uv.push_back(glm::vec2(xSegment, ySegment));
-			normals.push_back(glm::vec3(xPos, yPos, zPos));
-		}
-	}
-
-	bool oddRow = false;
-	for (int y = 0; y < Y_SEGMENTS; ++y)
-	{
-		if (!oddRow) // even rows: y == 0, y == 2; and so on
-		{
-			for (int x = 0; x <= X_SEGMENTS; ++x)
-			{
-				indices.push_back(y * (X_SEGMENTS + 1) + x);
-				indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-			}
-		}
-		else
-		{
-			for (int x = X_SEGMENTS; x >= 0; --x)
-			{
-				indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-				indices.push_back(y * (X_SEGMENTS + 1) + x);
-			}
-		}
-		oddRow = !oddRow;
-	}
 	
 
-	std::vector<float> data;
-	for (int i = 0; i < positions.size(); ++i)
+	GLfloat DEG_TO_RADIANS = 3.141592f / 180.f;
+	GLuint vnum = 0;
+	GLfloat x, y, z, lat_radians, lon_radians;
+
+	/* Define north pole */
+	positions[0] = 0; positions[1] = 0; positions[2] = 1.f;
+	vnum++;
+
+	GLfloat latstep = 180.f / lats;
+	GLfloat longstep = 360.f / longs;
+
+	/* Define vertices along latitude lines */
+	for (GLfloat lat = 90.f - latstep; lat > -90.f; lat -= latstep)
 	{
-		data.push_back(positions[i].x);
-		data.push_back(positions[i].y);
-		data.push_back(positions[i].z);
-		if (uv.size() > 0)
+		lat_radians = lat * DEG_TO_RADIANS;
+		for (GLfloat lon = -180.f; lon < 180.f; lon += longstep)
 		{
-			data.push_back(uv[i].x);
-			data.push_back(uv[i].y);
-		}
-		if (normals.size() > 0)
-		{
-			data.push_back(normals[i].x);
-			data.push_back(normals[i].y);
-			data.push_back(normals[i].z);
+			lon_radians = lon * DEG_TO_RADIANS;
+
+			x = cos(lat_radians) * cos(lon_radians);
+			y = cos(lat_radians) * sin(lon_radians);
+			z = sin(lat_radians);
+
+			/* Define the vertex */
+			positions[vnum * 3] = x; positions[vnum * 3 + 1] = y; positions[vnum * 3 + 2] = z;
+
+			float u = (lon + 180.f) / 360.f;
+			float v = (lat + 90.f) / 180.f;
+			uv[vnum * 2] = u;
+			uv[vnum * 2 + 1] = v;
+
+			vnum++;
 		}
 	}
-		
+	/* Define south pole */
+	positions[vnum * 3] = 0; positions[vnum * 3 + 1] = 0; positions[vnum * 3 + 2] = -1.f;
+	normals = positions;
+
+	for (i = 0; i < longs + 1; i++)
+	{
+		indices.push_back(i);
+	}
+	indices.push_back(1);	// Join last triangle in the triangle fan
+
+	GLuint start = 1;		// Start index for each latitude row
+	for (j = 0; j < lats - 2; j++)
+	{
+		for (i = 0; i < longs; i++)
+		{
+			indices.push_back(start + i);
+			indices.push_back(start + i + longs);
+		}
+		indices.push_back(start); // close the triangle strip loop by going back to the first vertex in the loop
+		indices.push_back(start + longs); // close the triangle strip loop by going back to the first vertex in the loop
+
+		start += longs;
+	}
+
+	// Define indices for the last triangle fan for the south pole region
+	for (i = numvertices - 1; i > (numvertices - longs - 2); i--)
+	{
+		indices.push_back(i);
+	}
+	indices.push_back(numvertices - 2);	// Tie up last triangle in fan
+
 
 	SetVertexPoints(positions);
 	SetTextureCords(uv);

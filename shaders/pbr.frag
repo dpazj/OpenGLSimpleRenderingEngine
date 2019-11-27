@@ -77,17 +77,32 @@ float calculate_shadow()
 	float closest = texture(shadow_map, projected.xy).r;
 	float current = projected.z;
 
-	float bias = max(0.05 * (1.0 - dot(Normal, normalize(light_positions[0] - Position))), 0.005);
+	float bias = max(0.05 * (1.0 - dot(Normal, normalize(light_positions[0] - Position))), 0.01);
 
-    float shadow = current - bias > closest  ? 1.0 : 0.0;
+    float shadow = 0.0;
 
-	return shadow;
+	vec2 texelSize = 1.0 / textureSize(shadow_map, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadow_map, projected.xy + vec2(x, y) * texelSize).r; 
+            shadow += current - bias > pcfDepth  ? 1.0 : 0.0;        
+        }    
+    }
+    shadow /= 9.0;
+    
+ 
+    if(projected.z > 1.0)
+        shadow = 0.0;
+        
+    return shadow;
+	
 }
 
 void main()
 {
 	
-
 	vec3 N = normalize(Normal);//normalize(Normal);
 	vec3 V = normalize(camera_position - Position);
 
@@ -118,20 +133,42 @@ void main()
 		KD *= 1.0 - metallic;
 
 		float n_dot_l = max(dot(N,LightDir),0.0);
-		LightOutput += (KD * albedo / PI + Specular) * radiance * n_dot_l;	
+
+		float shadow = calculate_shadow();
+
+		LightOutput += ((KD * albedo / PI + Specular) + (-0.5 * shadow)) * radiance * n_dot_l;	
 	}
 
-	float shadow = calculate_shadow();
 
-	vec3 ambient = vec3(0.03) * albedo * (ambient_occlusion + (1.0 - shadow));
+	vec3 ambient = (vec3(0.03) * albedo * (ambient_occlusion));
 	vec3 colour = ambient + LightOutput;
 	
 	//Gamma and HDR
 	colour = colour / (colour + vec3(1.0));
 	colour = pow(colour, vec3(1.0/2.2)); 
-
-
 	outputColor = vec4(colour,1.0);
+
+//	vec3 color = albedo;
+//    vec3 normal = normalize(Normal);
+//    vec3 lightColor = vec3(0.3);
+//    // ambient
+//    vec3 ambient = 0.3 * color;
+//    // diffuse
+//    vec3 lightDir = normalize(light_positions[0] - Position);
+//    float diff = max(dot(lightDir, normal), 0.0);
+//    vec3 diffuse = diff * lightColor;
+//    // specular
+//    vec3 viewDir = normalize(camera_position - Position);
+//    vec3 reflectDir = reflect(-lightDir, normal);
+//    float spec = 0.0;
+//    vec3 halfwayDir = normalize(lightDir + viewDir);  
+//    spec = pow(max(dot(normal, halfwayDir), 0.0), 64.0);
+//    vec3 specular = spec * lightColor;    
+//    // calculate shadow
+//    float shadow = calculate_shadow();                      
+//    vec3 lighting = (ambient + (1.0 - shadow) * (diffuse + specular)) * color;    
+//
+//	outputColor = vec4(lighting, 1.0);
 
 }
 

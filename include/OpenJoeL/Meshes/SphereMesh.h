@@ -4,6 +4,6 @@
 class SphereMesh : public Mesh 
 {
 public:
-	void Init();
+	void Init(GLuint lats = 200, GLuint longs = 200);
 };
 

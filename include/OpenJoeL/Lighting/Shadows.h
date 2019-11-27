@@ -35,7 +35,7 @@ public:
 	{
 
 		glViewport(0, 0, m_size, m_size);
-		glCullFace(GL_FRONT);
+		//glCullFace(GL_FRONT);
 
 		m_frame_buffer->Bind();
 		m_frame_buffer->Clear();
