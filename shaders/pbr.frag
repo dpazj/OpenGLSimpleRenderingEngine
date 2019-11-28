@@ -6,6 +6,13 @@
 
 #version 400
 
+#define MAXLIGHTS 10
+struct Light{
+	vec3 position;
+	vec3 colour;
+};
+
+
 out vec4 outputColor;
 in vec2 TextureCoordinates;
 in vec3 Position, Normal;
@@ -26,9 +33,8 @@ uniform float ambient_occlusion;
 
 
 // lights
-//uniform vec3 light_positions[4];
-uniform vec3 light_colors[4];
-uniform vec3 light_positions[4];
+uniform Light lights[MAXLIGHTS];
+uniform uint number_of_lights;
 
 const float PI = 3.14159265359;
 
@@ -145,14 +151,14 @@ void main()
 
 	vec3 LightOutput = vec3(0.0f);
 
-	for(int i = 0; i < 1; i++)
+	for(int i = 0; i < number_of_lights; i++)
 	{
-		vec3 LightDir = normalize(light_positions[i] - Position);
+		vec3 LightDir = normalize(lights[i].position - Position);
 		vec3 Half = normalize(V + LightDir);
 
-		float distance_to_light = length(light_positions[i] - Position);
+		float distance_to_light = length(lights[i].position - Position);
 		float attenuation = 1.0 / (distance_to_light * distance_to_light); //turn this into the quadratic 
-		vec3 radiance = light_colors[i] * attenuation;
+		vec3 radiance = lights[i].colour * attenuation;
 
 		vec3 Fresnel = calculate_fresnel(max(dot(Half,V),0.0),F0);
 		float distribution = calculate_distribution(N,Half,roughness);

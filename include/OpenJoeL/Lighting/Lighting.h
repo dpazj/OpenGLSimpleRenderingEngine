@@ -1,24 +1,26 @@
-////Joe Riemersma
-//
-//#pragma once
-//#include "LightSource.h"
-//#include <vector>
-//#include <memory>
-//
-//#define MAX_LIGHTS 100
-//
-//class Lighting
-//{
-//public:
-//
-//	Lighting();
-//
-//	void AddLightSource(std::shared_ptr<LightSource> light_source);
-//	std::vector<std::shared_ptr<LightSource>> GetLightSources();
-//	void UpdateShader(std::shared_ptr<Shader> shader);
-//
-//
-//private:
-//
-//	std::vector < std::shared_ptr<LightSource>> m_lights;
-//};
+//Joe Riemersma
+
+#pragma once
+#include "LightSource.h"
+#include <vector>
+
+#define MAX_LIGHTS 10
+
+class Lighting
+{
+public:
+
+	Lighting();
+
+	void AddLightSource(LightSource* light_source);
+	std::vector<LightSource*> GetLightSources();
+	void UpdateShader(Shader * shader);
+
+	void RenderPointLights(Shader * shader);
+	void RenderDirectionalLights(Shader* shader);
+	
+
+private:
+
+	std::vector <LightSource*> m_lights;
+};

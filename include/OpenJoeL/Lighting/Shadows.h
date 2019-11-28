@@ -1,6 +1,6 @@
+#pragma once 
+
 #include "OpenJoeL/Render/FrameBuffer.h"
-
-
 #include <functional>
 #include "glm/gtc/matrix_transform.hpp"
 
@@ -33,7 +33,7 @@ public:
 		m_frame_buffer->Unbind();
 	}
 
-	void RenderShadowMap(glm::vec3 world_pos, std::function<void(glm::mat4, glm::mat4)> render_scene)
+	void RenderShadowMap(glm::vec3 world_pos, std::function<void(glm::mat4, glm::mat4)> render_scene, Shader * shader)
 	{
 		glViewport(0, 0, m_size, m_size);
 
@@ -49,6 +49,9 @@ public:
 		transformations.push_back(projection *	glm::lookAt(world_pos, world_pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0)));
 		transformations.push_back(projection *	glm::lookAt(world_pos, world_pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
 		transformations.push_back(projection *	glm::lookAt(world_pos, world_pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
+
+
+		UpdateShaderWithShadowMatricies(shader);
 
 		render_scene(glm::mat4(1.0f), glm::mat4(1.0f));
 		m_frame_buffer->Unbind();

@@ -44,7 +44,7 @@ also includes the OpenGL extension initialisation*/
 #include "OpenJoeL/Meshes/ModelMesh.h"
 
 #include "OpenJoeL/Meshes/Object.h"
-
+#include "OpenJoeL/Lighting/Lighting.h"
 #include "OpenJoeL/Texture/Texture.h"
 
 #include "OpenJoeL/Utils/Camera.h"
@@ -69,6 +69,7 @@ Shader* point_shadow_shader;
 Shader* pbr_shader;
 Shader* pbr_texture_shader;
 Shader* pbr_texture_reflection_shader;
+Shader* simple_shader;
 
 //Objects
 PBRTexturedObject* floorplane;
@@ -84,22 +85,17 @@ PBRTexturedReflectObject* candle_holder2;
 
 std::vector<PBRTexturedReflectObject*> texture_reflect_objects;
 
+//Lighting
+Lighting scene_lighting;
+LightSource* moveable_light;
+
 //OTHER
 Camera camera(glm::vec3(0, 2, 5));
 InputManager* input_manager;
 
-PointShadowMap* point_shadow_map;
-
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
 
-std::vector<glm::vec3> light_positions = {
-	glm::vec3(0,6,0)
-};
-
-std::vector<glm::vec3> light_colours = {
-	glm::vec3(1,1,1)
-};
 
 unsigned int loadTexture(char const* path);
 void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos);
@@ -132,30 +128,30 @@ void setup_inputs(GLWrapper* glw)
 	});
 
 	input_manager->AddKey(GLFW_KEY_J, [glw]() {
-		candle_holder1->transform.position.x += 0.001;
+		moveable_light->transform.position.x += 0.05;
 	});
 	input_manager->AddKey(GLFW_KEY_L, [glw]() {
-		candle_holder1->transform.position.x -= 0.001;
+		moveable_light->transform.position.x -= 0.05;
 	});
 	input_manager->AddKey(GLFW_KEY_I, [glw]() {
-		candle_holder1->transform.position.y += 0.001;
+		moveable_light->transform.position.y += 0.05;
 	});
 	input_manager->AddKey(GLFW_KEY_K, [glw]() {
-		candle_holder1->transform.position.y -= 0.001;
+		moveable_light->transform.position.y -= 0.05;
 	});
 
 	input_manager->AddKey(GLFW_KEY_U, [glw]() {
-		candle_holder1->transform.position.z += 0.001;
+		moveable_light->transform.position.z += 0.05;
 	});
 	input_manager->AddKey(GLFW_KEY_O, [glw]() {
-		candle_holder1->transform.position.z -= 0.001;
+		moveable_light->transform.position.z -= 0.05;
 	});
 
 	input_manager->AddKey(GLFW_KEY_N, [glw]() {
-		candle_holder1->transform.Rotate(-1, Transform::Y);
+		moveable_light->transform.Rotate(-1, Transform::Y);
 	});
 	input_manager->AddKey(GLFW_KEY_M, [glw]() {
-		candle_holder1->transform.Rotate(1, Transform::Y);
+		moveable_light->transform.Rotate(1, Transform::Y);
 	});
 }
 
@@ -193,6 +189,7 @@ void init(GLWrapper* glw)
 		pbr_texture_shader = new Shader("../shaders/pbrtexture.vert", "../shaders/pbrtexture.frag");
 		pbr_texture_reflection_shader = new Shader("../shaders/pbrtexturereflection.vert", "../shaders/pbrtexturereflection.frag");
 
+		simple_shader = new Shader("../shaders/simple.vert", "../shaders/simple.frag");
 	}
 	catch (std::exception & e)
 	{
@@ -270,6 +267,14 @@ void init(GLWrapper* glw)
 	pbr_texture_reflection_shader->UseShader();
 	pbr_texture_reflection_shader->SetInt("reflection_cube", 10);
 
+	//init lighting
+	SphereMesh spheremesh;
+	spheremesh.Init();
+
+	moveable_light = new LightSource(spheremesh.GetMesh(),LightSource::Point);
+	//moveable_light->Hide(false);
+	scene_lighting.AddLightSource(moveable_light);
+
 }
 
 void RenderTextureReflections() 
@@ -334,7 +339,8 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 	//two sides
 	auto start = glm::vec3(0, 4, 26);
 	wallplane->transform.y_angle = 0;
-	for (int x = -1; x < 2; x += 2) {
+	for (int x = -1; x < 2; x += 2){
+		wallplane->transform.y_angle += 180;
 		for (int i = 0; i < 8; i++)
 		{
 			for (int j = 0; j < 3; j++)
@@ -343,6 +349,7 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 				wallplane->Draw(shader);
 			}
 		}
+		
 	}
 
 	wallplane->transform.y_angle = 90;
@@ -356,13 +363,15 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 		}
 		
 	}
-	
+
+
+	wallplane->transform.y_angle = 270;
 	start = glm::vec3(16, 4, 30);
 	for (int i = 0; i < 5; i++)
 	{
 		for (int j = 0; j < 2; j++)
 		{
-			wallplane->transform.position = start + glm::vec3(-8 * i, j * 19, 0);
+			wallplane->transform.position = start + glm::vec3(-8 * i, j * 19.4, 0);
 			wallplane->Draw(shader);
 		}
 	}
@@ -372,7 +381,7 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 
 	start = glm::vec3(0, 9.9, 30);
 	wallplane->transform.scale = glm::vec3(1.9, 1, 3);
-
+	
 	
 	for (int i = 0; i < 3; i++)
 	{
@@ -407,12 +416,38 @@ void RenderPBR(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shade
 	//cube->Draw(shader);
 }
 
+void RenderLights(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader* shader)
+{
+	shader->UseShader();
+	shader->SetMat4("projection", projection);
+	shader->SetMat4("view", view);
+	shader->SetVec3("camera_position", camera_pos);
+
+	for (const auto& light : scene_lighting.GetLightSources())
+	{
+		shader->SetVec3("albedo", light->GetColour());
+		light->Draw(shader);
+	}
+}
+
 void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos)
 {
 	RenderPBRTextureReflect(projection, view, camera_pos, pbr_texture_reflection_shader);
 	RenderPBRTexture(projection, view, camera_pos, pbr_texture_shader);
 	RenderPBR(projection, view, camera_pos, pbr_shader);
+	RenderLights(projection, view, camera_pos, simple_shader);
 }
+
+
+
+void RenderSceneDepth(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader * shader)
+{
+	RenderPBRTextureReflect(projection, view, camera_pos, shader);
+	RenderPBRTexture(projection, view, camera_pos, shader);
+	RenderPBR(projection, view, camera_pos, shader);
+	RenderLights(projection, view, camera_pos, shader);
+}
+
 
 
 
@@ -427,11 +462,14 @@ void display()
 	glEnable(GL_DEPTH_TEST);
 	//glClearColor(0.859375f, 0.859375f, 0.859375f, 1.0f);
 	glClearColor(0, 0, 0, 1.0f);
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	
-	
+	//LIGHTING
+	scene_lighting.UpdateShader(pbr_texture_shader);
+	scene_lighting.UpdateShader(pbr_shader);
+
+
 
 
 	//RENDER REFLECTIONS;
@@ -448,17 +486,17 @@ void display()
 	
 	//LIGHTING
 	
-	for (int i = 0; i < light_positions.size(); i++)
-	{
-		pbr_texture_shader->UseShader();
-		pbr_texture_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
-		pbr_texture_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
+	//for (int i = 0; i < light_positions.size(); i++)
+	//{
+	//	pbr_texture_shader->UseShader();
+	//	pbr_texture_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
+	//	pbr_texture_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
 
-		pbr_shader->UseShader();
-		pbr_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
-		pbr_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
+	//	pbr_shader->UseShader();
+	//	pbr_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
+	//	pbr_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
 
-	}
+	//}
 
 }
 

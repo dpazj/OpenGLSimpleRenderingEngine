@@ -88,8 +88,15 @@ public:
 	};
 	virtual ~Object() = default;
 
-	virtual void Draw(Shader* shader, glm::mat4 idendity = glm::mat4(1.0f)) {};
+	virtual void Draw(Shader* shader, glm::mat4 idendity = glm::mat4(1.0f)) {
+		if (!m_draw) { return; }
+
+		shader->SetMat4("model", transform.GetModel(idendity));
+		m_mesh.Draw(shader);
+	};
+
 	Transform transform;
+
 	void Hide(bool hide)
 	{
 		m_draw = !hide;

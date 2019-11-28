@@ -119,6 +119,9 @@
     <ClInclude Include="..\include\OpenJoeL\Render\Renderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\OpenJoeL\Lighting\LightSource.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shaders\pbr.frag" />

@@ -148,6 +148,7 @@
   <ItemGroup>
     <ClInclude Include="..\include\OpenJoeL\Environment\Skybox.h" />
     <ClInclude Include="..\include\OpenJoeL\Lighting\Lighting.h" />
+    <ClInclude Include="..\include\OpenJoeL\Lighting\LightSource.h" />
     <ClInclude Include="..\include\OpenJoeL\Lighting\Shadows.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\CubeMesh.h" />
     <ClInclude Include="..\include\OpenJoeL\Meshes\Mesh.h" />
