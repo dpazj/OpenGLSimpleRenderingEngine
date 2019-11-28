@@ -67,8 +67,11 @@ protected:
 	template <typename T>
 	void SetIndices(std::vector<T> indices)
 	{
-		m_has_indices = true;
 		m_indice_count = indices.size();
+
+		if (m_indice_count == 0) { return; }
+		m_has_indices = true;
+		
 		glBindVertexArray(m_mesh_vao);
 
 		glGenBuffers(1, &m_element_buffer_object);

@@ -173,6 +173,8 @@
     <None Include="..\shaders\pbrreflection.vert" />
     <None Include="..\shaders\pbrtexture.frag" />
     <None Include="..\shaders\pbrtexture.vert" />
+    <None Include="..\shaders\pbrtexturereflection.frag" />
+    <None Include="..\shaders\pbrtexturereflection.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

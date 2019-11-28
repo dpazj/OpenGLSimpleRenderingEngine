@@ -110,10 +110,9 @@ void main()
 	colour = pow(colour, vec3(1.0/2.2)); 
 
 
-	vec3 V2 = normalize(Position - camera_position);
-	vec4 reflection = texture(reflection_cube, reflect(V2,N)) * metallic;
+	vec4 reflection = texture(reflection_cube, reflect(-V,N)) * metallic;
 
-	outputColor = mix(vec4(colour,1.0),reflection, 0.5f);
+	outputColor = mix(vec4(colour,1.0),reflection, roughness);
 }
 
 
