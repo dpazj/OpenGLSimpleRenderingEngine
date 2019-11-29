@@ -102,6 +102,7 @@ public:
 		m_draw = !hide;
 	}
 
+	bool IsHidden() { return !m_draw; }
 protected:
 	Mesh m_mesh;
 	bool m_draw = true;

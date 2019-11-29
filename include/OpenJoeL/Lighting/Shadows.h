@@ -33,14 +33,14 @@ public:
 		m_frame_buffer->Unbind();
 	}
 
-	void RenderShadowMap(glm::vec3 world_pos, std::function<void(glm::mat4, glm::mat4)> render_scene, Shader * shader)
+	void RenderShadowMap(glm::vec3 world_pos, std::function<void(glm::mat4, glm::mat4, glm::vec3)> render_scene, Shader * shader)
 	{
 		glViewport(0, 0, m_size, m_size);
 
 		m_frame_buffer->Bind();
 		m_frame_buffer->Clear();
 
-		glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, 1.0f, 25.0f);
+		glm::mat4 projection = glm::perspective(glm::radians(90.0f), 1.0f, 1.0f, far_plane);
 
 		transformations.clear();
 		transformations.push_back(projection *	glm::lookAt(world_pos, world_pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0)));
@@ -50,10 +50,13 @@ public:
 		transformations.push_back(projection *	glm::lookAt(world_pos, world_pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0)));
 		transformations.push_back(projection *	glm::lookAt(world_pos, world_pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0)));
 
-
+		shader->UseShader();
 		UpdateShaderWithShadowMatricies(shader);
+		shader->SetVec3("light_pos", world_pos);
+		shader->SetFloat("far_plane", far_plane);
 
-		render_scene(glm::mat4(1.0f), glm::mat4(1.0f));
+
+		render_scene(glm::mat4(1.0f), glm::mat4(1.0f), world_pos);
 		m_frame_buffer->Unbind();
 	}
 
@@ -65,10 +68,15 @@ public:
 		}
 	}
 
-	void BindShadowMap()
+	void BindShadowMap(GLuint index)
 	{
-		glActiveTexture(GL_TEXTURE7);
+		glActiveTexture(GL_TEXTURE10 + index);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, m_cube_map);
+	}
+
+	GLfloat GetFarPlane()
+	{
+		return far_plane;
 	}
 
 private:
@@ -77,6 +85,7 @@ private:
 	FrameBuffer* m_frame_buffer;
 	GLfloat m_size;
 	GLuint m_cube_map;
+	GLfloat far_plane = 300.0f;
 };
 
 
@@ -133,8 +142,13 @@ public:
 
 	void BindShadowMap()
 	{
-		glActiveTexture(GL_TEXTURE7);
+		glActiveTexture(GL_TEXTURE10);
 		glBindTexture(GL_TEXTURE_2D, m_depth_map);
+	}
+
+	GLfloat GetFarPlane()
+	{
+		return far_plane;
 	}
 
 	GLuint m_depth_map = 0;

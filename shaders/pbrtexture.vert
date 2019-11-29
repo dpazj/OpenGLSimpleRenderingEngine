@@ -16,7 +16,7 @@ void main()
 
 	TextureCoordinates = texture_coordinates;
 	Position = vec3(model * h_pos);
-	Normal = mat3(model) * normal;
+	Normal = transpose(inverse(mat3(model))) * normal;
 
 	gl_Position = projection * view * model * h_pos;
 }

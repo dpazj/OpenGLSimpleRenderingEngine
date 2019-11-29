@@ -59,6 +59,8 @@ also includes the OpenGL extension initialisation*/
 // Include headers for our objects
 
 const GLfloat REFLECTION_RESOLUTION = 1024;
+const GLfloat SHADOW_RESOLUTION = 1024;
+
 GLint screen_width = 1680;
 GLint screen_height = 1050;
 GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
@@ -70,6 +72,7 @@ Shader* pbr_shader;
 Shader* pbr_texture_shader;
 Shader* pbr_texture_reflection_shader;
 Shader* simple_shader;
+Shader* skybox_shader;
 
 //Objects
 PBRTexturedObject* floorplane;
@@ -77,17 +80,29 @@ PBRTexturedObject* wallplane;
 
 PBRTexturedObject* tabletop;
 PBRTexturedObject* tablebot;
+PBRTexturedObject* chandelier;
+
+PBRTexturedObject* door;
+
+
+PBRTexturedObject* chest;
 
 PBRObject* window;
 
 PBRTexturedReflectObject* candle_holder1;
 PBRTexturedReflectObject* candle_holder2;
 
+
+
+Skybox* skybox;
+
+
 std::vector<PBRTexturedReflectObject*> texture_reflect_objects;
 
 //Lighting
 Lighting scene_lighting;
 LightSource* moveable_light;
+
 
 //OTHER
 Camera camera(glm::vec3(0, 2, 5));
@@ -190,6 +205,7 @@ void init(GLWrapper* glw)
 		pbr_texture_reflection_shader = new Shader("../shaders/pbrtexturereflection.vert", "../shaders/pbrtexturereflection.frag");
 
 		simple_shader = new Shader("../shaders/simple.vert", "../shaders/simple.frag");
+		skybox_shader = new Shader("../shaders/skybox.vert", "../shaders/skybox.frag");
 	}
 	catch (std::exception & e)
 	{
@@ -208,18 +224,40 @@ void init(GLWrapper* glw)
 	//PBRTextures candle_textures("../models/candle-holder/textures/albedo.png", "../models/candle-holder/textures/normal.png", "../models/candle-holder/textures/metallic.png", "../models/candle-holder/textures/roughness.png", "../models/candle-holder/textures/ao.png");
 	PBRTextures floor_textures("../models/floor/albedo.png", "../models/floor/normal.png", "../models/floor/metallic.psd", "../models/floor/roughness.png", "../models/floor/ao.png");
 	PBRTextures wall_textures("../models/wall/albedo.png", "../models/wall/normal.png", "../models/wall/metallic.png", "../models/wall/roughness.png", "../models/wall/ao.png");
+	PBRTextures chandelier_textures("../models/chandelier/textures/albedo.png", "../models/chandelier/textures/normal.png", "../models/chandelier/textures/metallic.png", "../models/chandelier/textures/roughness.png", "../models/chandelier/textures/ao.png");
+	PBRTextures chest_textures("../models/chest/textures/albedo.jpeg", "../models/chest/textures/normal.jpeg", "../models/chest/textures/metallic.jpeg", "../models/chest/textures/roughness.jpeg", "../models/chest/textures/ao.jpeg");
+
+	PBRTextures door_textures("../models/door/textures/albedo.png", "../models/door/textures/normal.png", "../models/door/textures/roughness.png", "../models/door/textures/roughness.png", "../models/door/textures/ao.png");
+	
 
 
 	//LOAD MESHES
-	ModelMesh window_mesh;
-	window_mesh.LoadObject("../models/window/window.obj");
-	//window_mesh.LoadObject("../models/candle-holder/candle.obj");
+	ModelMesh chandeliermesh; chandeliermesh.LoadObject("../models/chandelier/Chandelier.fbx"); chandeliermesh.SetMeshTextures(chandelier_textures);
+	ModelMesh window_mesh; window_mesh.LoadObject("../models/window/window.obj");
+	ModelMesh chestmesh; chestmesh.LoadObject("../models/chest/chest.obj"); chestmesh.SetMeshTextures(chest_textures);
+
+	ModelMesh doormesh; doormesh.LoadObject("../models/door/door.obj"); doormesh.SetMeshTextures(door_textures);
+
+
+	PlaneMesh floor_mesh; floor_mesh.Init(); floor_mesh.SetMeshTextures(floor_textures);
+
+
+
+	//Init Objects
+
+	door = new PBRTexturedObject(doormesh.GetMesh());
+	door->transform.Scale(0.15f);
+	door->transform.y_angle = 270.0f;
+	door->transform.position = glm::vec3(-10, 7.2, -29.7);
+
+
 
 	window = new PBRObject(window_mesh.GetMesh());
-	window->SetPBRProperties(glm::vec3(144.0f/255.0f,89.0f/255.0f, 35.0f/255.0f), 0.2f, 0.3f); //
+	window->SetPBRProperties(glm::vec3(144.0f/255.0f,89.0f/255.0f, 35.0f/255.0f), 0.2f, 0.3f); 
 	window->transform.Scale(2.0f);
 	window->transform.scale.y + 0.1f;
 
+	
 
 	/*ModelMesh candle_mesh;
 	candle_mesh.SetMeshTextures(candle_textures);
@@ -227,16 +265,21 @@ void init(GLWrapper* glw)
 
 	//CreateTable();
 
-	PlaneMesh floor_mesh;
-	floor_mesh.Init();
-	floor_mesh.SetMeshTextures(floor_textures);
+	
 
 	GLfloat end = glfwGetTime();
 	std::cout << "Load objects in: " << (end - start) << " seconds" << std::endl;
 
 	//CREATE OBJECTS
 	
-
+	
+	chandelier = new PBRTexturedObject(chandeliermesh.GetMesh());
+	chandelier->transform.Scale(0.4f);
+	
+	chest = new PBRTexturedObject(chestmesh.GetMesh());
+	chest->transform.Scale(4.5f);
+	
+	
 
 	/*candle_holder1 = new PBRTexturedReflectObject(candle_mesh.GetMesh());
 	candle_holder1->CreateDynamicCubeMap(REFLECTION_RESOLUTION);
@@ -251,7 +294,7 @@ void init(GLWrapper* glw)
 	candle_holder2->transform.Translate(glm::vec3(-1.473f, 5.596, 2.78));*/
 
 	floorplane = new PBRTexturedObject(floor_mesh.GetMesh());
-	floorplane->transform.Scale(glm::vec3(10,1,10));
+	floorplane->transform.Scale(glm::vec3(10.0f,1.0f,10.0f));
 
 	floor_mesh.SetMeshTextures(wall_textures);
 	wallplane = new PBRTexturedObject(floor_mesh.GetMesh());
@@ -264,17 +307,36 @@ void init(GLWrapper* glw)
 	texture_reflect_objects.push_back(candle_holder2);*/
 
 	//configure shaders
-	pbr_texture_reflection_shader->UseShader();
-	pbr_texture_reflection_shader->SetInt("reflection_cube", 10);
+	//pbr_texture_reflection_shader->UseShader();
+	//pbr_texture_reflection_shader->SetInt("reflection_cube", 7);
+
+
+	pbr_texture_shader->UseShader();
+	pbr_texture_shader->SetInt("shadow_map", 10);
+	pbr_texture_shader->SetFloat("far_plane", 300.0f);
+
+	pbr_shader->UseShader();
+	pbr_shader->SetInt("shadow_map", 10);
+	pbr_shader->SetFloat("far_plane", 300.0f);
+
 
 	//init lighting
-	SphereMesh spheremesh;
+	CubeMesh spheremesh;
 	spheremesh.Init();
-
 	moveable_light = new LightSource(spheremesh.GetMesh(),LightSource::Point);
-	//moveable_light->Hide(false);
-	scene_lighting.AddLightSource(moveable_light);
+	moveable_light->InitShadowMap(SHADOW_RESOLUTION);
+	moveable_light->Hide(false);
+	moveable_light->SetColour(glm::vec3(0.89f));
 
+
+	scene_lighting.AddPointLightSource(moveable_light);
+	
+
+	//skybox
+
+	const std::vector<std::string> skybox_faces = { "../skybox/right.png","../skybox/left.png" ,"../skybox/up.png","../skybox/down.png","../skybox/back.png","../skybox/front.png"};
+	skybox = new Skybox(skybox_faces, skybox_shader);
+	skybox->Init();
 }
 
 void RenderTextureReflections() 
@@ -305,19 +367,22 @@ void RenderPBRTextureReflect(glm::mat4 projection, glm::mat4 view, glm::vec3 cam
 
 }
 
-void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader * shader)
+void DrawRoom(Shader* shader)
 {
-	shader->UseShader();
-	shader->SetMat4("projection", projection);
-	shader->SetMat4("view", view);
-	shader->SetVec3("camera_position", camera_pos);
+	glm::vec3 start;
 
-	/*tabletop->Draw(shader);
-	tablebot->Draw(shader);*/
+	//chandileir
+	start = glm::vec3(0, 17, 0);
+	for (int i = -1; i < 2; i++)
+	{
+		chandelier->transform.position = start + glm::vec3(0, 0, i * 13);
+		chandelier->Draw(shader);
+	}
 
 
 	//floor
-	for (float i = 0.0f; i < 2.0f; i++)
+	floorplane->transform.x_angle = 0;
+	for (int i = 0; i < 2; i++)
 	{
 		floorplane->transform.position = glm::vec3(-10.0f, i * 23.0f, 20.0f);
 		floorplane->Draw(shader);
@@ -331,15 +396,15 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 		floorplane->Draw(shader);
 		floorplane->transform.position = glm::vec3(10.0f, i * 23.0f, -20.0f);
 		floorplane->Draw(shader);
-		floorplane->transform.Rotate(180, Transform::X);
+		floorplane->transform.x_angle = 180;
 	}
 
 	//walls
 
 	//two sides
-	auto start = glm::vec3(0, 4, 26);
+	start = glm::vec3(0, 4, 26);
 	wallplane->transform.y_angle = 0;
-	for (int x = -1; x < 2; x += 2){
+	for (int x = -1; x < 2; x += 2) {
 		wallplane->transform.y_angle += 180;
 		for (int i = 0; i < 8; i++)
 		{
@@ -349,7 +414,7 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 				wallplane->Draw(shader);
 			}
 		}
-		
+
 	}
 
 	wallplane->transform.y_angle = 90;
@@ -358,10 +423,10 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 	{
 		for (int j = 0; j < 3; j++)
 		{
-			wallplane->transform.position = start + glm::vec3(-8 * i, j*8, 0);
+			wallplane->transform.position = start + glm::vec3(-8 * i, j * 8, 0);
 			wallplane->Draw(shader);
 		}
-		
+
 	}
 
 
@@ -381,21 +446,54 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 
 	start = glm::vec3(0, 9.9, 30);
 	wallplane->transform.scale = glm::vec3(1.9, 1, 3);
-	
-	
+
+
 	for (int i = 0; i < 3; i++)
 	{
-		for (int j = -1; j < 2; j+=2){
-			wallplane->transform.position = start + glm::vec3(j * -18, 3.8 * i,0);
+		for (int j = -1; j < 2; j += 2) {
+			wallplane->transform.position = start + glm::vec3(j * -18, 3.8 * i, 0);
 			wallplane->Draw(shader);
 		}
 
-		for (int j = -1; j < 2; j+=2) {
+		for (int j = -1; j < 2; j += 2) {
 			wallplane->transform.position = start + glm::vec3(j * -6, 3.8 * i, 0);
 			wallplane->Draw(shader);
 		}
 	}
 	wallplane->transform.scale = tmp_scale;
+}
+
+void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader * shader)
+{
+	shader->UseShader();
+	shader->SetMat4("projection", projection);
+	shader->SetMat4("view", view);
+	shader->SetVec3("camera_position", camera_pos);
+
+	
+
+	//tabletop->Draw(shader);
+	//tablebot->Draw(shader);
+
+	chest->transform.y_angle = 90;
+	glm::vec3 start = glm::vec3(0, 2.2, 0);
+
+	for (int i = -1; i < 2; i+=2)
+	{
+		for (int j = -1; j < 2; j++)
+		{
+			chest->transform.position = start + glm::vec3(i * -17, 0, j * 12);
+			chest->Draw(shader);
+		}
+		
+		chest->transform.y_angle = 270;
+	}
+	
+	door->Draw(shader);
+
+	DrawRoom(shader);
+
+	
 }
 
 void RenderPBR(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader* shader)
@@ -412,8 +510,7 @@ void RenderPBR(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shade
 		window->transform.position = start + glm::vec3(-12 * i, 0, 0);
 		window->Draw(shader);
 	}
-	
-	//cube->Draw(shader);
+
 }
 
 void RenderLights(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader* shader)
@@ -423,11 +520,26 @@ void RenderLights(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Sh
 	shader->SetMat4("view", view);
 	shader->SetVec3("camera_position", camera_pos);
 
-	for (const auto& light : scene_lighting.GetLightSources())
+	for (const auto& light : scene_lighting.GetPointLightSources())
 	{
 		shader->SetVec3("albedo", light->GetColour());
 		light->Draw(shader);
 	}
+
+	for (const auto& light : scene_lighting.GetDirectionalLightSources())
+	{
+		shader->SetVec3("albedo", light->GetColour());
+		light->Draw(shader);
+	}
+}
+
+void RenderSkybox(glm::mat4 projection, glm::mat4 view)
+{
+
+	skybox_shader->UseShader();
+	skybox_shader->SetMat4("view", glm::mat4(glm::mat3(view)));
+	skybox_shader->SetMat4("projection", projection);
+	skybox->Draw();
 }
 
 void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos)
@@ -436,7 +548,9 @@ void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos)
 	RenderPBRTexture(projection, view, camera_pos, pbr_texture_shader);
 	RenderPBR(projection, view, camera_pos, pbr_shader);
 	RenderLights(projection, view, camera_pos, simple_shader);
+	RenderSkybox(projection, view);
 }
+
 
 
 
@@ -448,7 +562,14 @@ void RenderSceneDepth(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 	RenderLights(projection, view, camera_pos, shader);
 }
 
+void PerformLighting()
+{
+	scene_lighting.UpdateShaderWithLightInfo(pbr_texture_shader);
+	scene_lighting.UpdateShaderWithLightInfo(pbr_shader);
 
+	scene_lighting.RenderPointLightShadows([](glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos) {RenderSceneDepth(projection, view, camera_pos, point_shadow_shader); }, point_shadow_shader);
+	scene_lighting.AttachShadowMaps();	
+}
 
 
 void display()
@@ -466,38 +587,19 @@ void display()
 
 	
 	//LIGHTING
-	scene_lighting.UpdateShader(pbr_texture_shader);
-	scene_lighting.UpdateShader(pbr_shader);
-
-
-
+	PerformLighting();
 
 	//RENDER REFLECTIONS;
 	RenderReflections();
-
-
 
 	glViewport(0, 0, screen_width, screen_height);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//PROPER DRAW
 	glm::mat4 projection = glm::perspective(glm::radians(80.f), aspect_ratio, 0.1f, 300.0f);
+
 	RenderScene(projection, camera.GetView(), camera.GetPosition());
 	
-	//LIGHTING
-	
-	//for (int i = 0; i < light_positions.size(); i++)
-	//{
-	//	pbr_texture_shader->UseShader();
-	//	pbr_texture_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
-	//	pbr_texture_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
-
-	//	pbr_shader->UseShader();
-	//	pbr_shader->SetVec3(("light_positions[" + std::to_string(i) + "]").c_str(), light_positions.at(i));
-	//	pbr_shader->SetVec3(("light_colours[" + std::to_string(i) + "]").c_str(), light_colours.at(i));
-
-	//}
-
 }
 
 void modifyTexture(GLuint texture)

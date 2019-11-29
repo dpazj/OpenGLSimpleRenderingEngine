@@ -92,7 +92,9 @@ void Skybox::LoadCubeMap()
 
 	GLint width, height, channels;
 	unsigned char* data;
-	
+
+	stbi_set_flip_vertically_on_load(false);
+
 	for (GLuint i = 0; i < m_faces.size(); i++)
 	{
 		data = stbi_load(m_faces.at(i).c_str(), &width, &height, &channels, 0);

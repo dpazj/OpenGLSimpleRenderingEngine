@@ -85,6 +85,6 @@ void DynamicCubemap::RenderCubemap(glm::vec3 world_pos, std::function<void(glm::
 
 void DynamicCubemap::BindCubemap()
 {
-	glActiveTexture(GL_TEXTURE10);
+	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, m_cube_map);
 }
