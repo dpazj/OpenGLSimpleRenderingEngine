@@ -116,8 +116,8 @@ InputManager* input_manager;
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
 
-bool hide_light, hide_sun = false;
-bool hide_reflection_sphere = true;
+bool hide_sun = false;
+bool hide_light, hide_reflection_sphere = true;
 GLfloat tmp_power = 0; GLfloat sun_tmp_power = 0;
 
 unsigned int loadTexture(char const* path);
@@ -226,7 +226,7 @@ void SetupLighting()
 			torchlight->SetColour(glm::vec3(0.76,0.278,0));
 			torchlight->SetPower(30.0f);
 			torchlight->SetShadowStrength(1.0f);
-			torchlight->SetShadowBias(0.50f);
+			torchlight->SetShadowBias(0.60f);
 			torchlight->transform.position = start + glm::vec3(i * -18.9, 0, j * 15);
 			scene_lighting.AddPointLightSource(torchlight);
 		}
@@ -266,7 +266,7 @@ void init(GLWrapper* glw)
 	setup_inputs(glw);
 
 	GLfloat start = glfwGetTime();
-	std::cout << "Loading objects..." << std::endl;
+	std::cout << "Loading objects and textures... May take upwards of 15 seconds :( " << std::endl;
 
 	//LOAD TEXTURES
 	
@@ -315,8 +315,6 @@ void init(GLWrapper* glw)
 	door->transform.y_angle = 270.0f;
 	door->transform.position = glm::vec3(-10, 7.2, -29.8);
 
-
-
 	window = new PBRObject(window_mesh.GetMesh());
 	window->SetPBRProperties(glm::vec3(144.0f/255.0f,89.0f/255.0f, 35.0f/255.0f), 0.2f, 0.3f); 
 	window->transform.Scale(2.0f);
@@ -329,7 +327,7 @@ void init(GLWrapper* glw)
 	
 
 	GLfloat end = glfwGetTime();
-	std::cout << "Load objects in: " << (end - start) << " seconds" << std::endl;
+	std::cout << "Load objects and textures in: " << (end - start) << " seconds" << std::endl;
 
 	//CREATE OBJECTS
 	
@@ -782,7 +780,7 @@ void print_instructions()
 /* Entry point of program */
 int main(int argc, char* argv[])
 {
-	GLWrapper* glw = new GLWrapper(screen_width, screen_height, "PBR");
+	GLWrapper* glw = new GLWrapper(screen_width, screen_height, "Assignment 2 - Joe Riemersma");
 	input_manager = new InputManager(glw->getWindow());
 
 	if (!ogl_LoadFunctions())
