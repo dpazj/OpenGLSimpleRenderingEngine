@@ -69,39 +69,44 @@ GLfloat aspect_ratio = (GLfloat)screen_width / (GLfloat)screen_height;
 //SHADERS
 Shader* point_shadow_shader;
 Shader* pbr_shader;
+Shader* pbr_reflect_shader;
 Shader* pbr_texture_shader;
 Shader* pbr_texture_reflection_shader;
 Shader* simple_shader;
 Shader* skybox_shader;
 
 //Objects
+//room
 PBRTexturedObject* floorplane;
 PBRTexturedObject* wallplane;
-
 PBRTexturedObject* tabletop;
 PBRTexturedObject* tablebot;
 PBRTexturedObject* chandelier;
-
 PBRTexturedObject* door;
+PBRTexturedObject* torch;
 
+//Objects
+PBRTexturedReflectObject* gold_clock;
 
 PBRTexturedObject* chest;
 
 PBRObject* window;
 
-PBRTexturedReflectObject* candle_holder1;
-PBRTexturedReflectObject* candle_holder2;
 
+PBRReflectObject* reflection_circle;
 
 
 Skybox* skybox;
 
 
 std::vector<PBRTexturedReflectObject*> texture_reflect_objects;
+std::vector<PBRReflectObject*> reflect_objects;
+
 
 //Lighting
 Lighting scene_lighting;
 LightSource* moveable_light;
+LightSource* sun_light;
 
 
 //OTHER
@@ -111,9 +116,13 @@ InputManager* input_manager;
 GLfloat delta_time = 0;
 GLfloat last_frame = 0;
 
+bool hide_light, hide_sun = false;
+bool hide_reflection_sphere = true;
+GLfloat tmp_power = 0; GLfloat sun_tmp_power = 0;
 
 unsigned int loadTexture(char const* path);
 void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos);
+void RenderSceneDepth(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader* shader);
 
 void setup_inputs(GLWrapper* glw)
 {
@@ -143,53 +152,93 @@ void setup_inputs(GLWrapper* glw)
 	});
 
 	input_manager->AddKey(GLFW_KEY_J, [glw]() {
-		moveable_light->transform.position.x += 0.05;
+		moveable_light->transform.position.x += 10 * delta_time;
 	});
 	input_manager->AddKey(GLFW_KEY_L, [glw]() {
-		moveable_light->transform.position.x -= 0.05;
+		moveable_light->transform.position.x -= 10 * delta_time;
 	});
 	input_manager->AddKey(GLFW_KEY_I, [glw]() {
-		moveable_light->transform.position.y += 0.05;
+		moveable_light->transform.position.z += 10 * delta_time;
 	});
 	input_manager->AddKey(GLFW_KEY_K, [glw]() {
-		moveable_light->transform.position.y -= 0.05;
+		moveable_light->transform.position.z -= 10 * delta_time;
 	});
-
 	input_manager->AddKey(GLFW_KEY_U, [glw]() {
-		moveable_light->transform.position.z += 0.05;
+		moveable_light->transform.position.y += 10 * delta_time;
 	});
 	input_manager->AddKey(GLFW_KEY_O, [glw]() {
-		moveable_light->transform.position.z -= 0.05;
+		moveable_light->transform.position.y -= 10 * delta_time;
 	});
 
-	input_manager->AddKey(GLFW_KEY_N, [glw]() {
-		moveable_light->transform.Rotate(-1, Transform::Y);
-	});
-	input_manager->AddKey(GLFW_KEY_M, [glw]() {
-		moveable_light->transform.Rotate(1, Transform::Y);
-	});
-}
-
-
-void CreateTable()
-{
-	PBRTextures tabletop_textures("../models/wooden-table/textures/topalbedo.png", "../models/wooden-table/textures/topnormal.png", "../models/wooden-table/textures/metallic.png", "../models/wooden-table/textures/topsmooth.png", "../models/wooden-table/textures/ao.png");
-	PBRTextures tablebot_textures("../models/wooden-table/textures/botalbedo.png", "../models/wooden-table/textures/botnormal.png", "../models/wooden-table/textures/metallic.png", "../models/wooden-table/textures/botsmooth.png", "../models/wooden-table/textures/ao.png");
 	
-	ModelMesh tabletop_mesh;
-	tabletop_mesh.SetMeshTextures(tabletop_textures);
-	tabletop_mesh.LoadObject("../models/wooden-table/top.obj");
 
-	ModelMesh tablebot_mesh;
-	tablebot_mesh.SetMeshTextures(tablebot_textures);
-	tablebot_mesh.LoadObject("../models/wooden-table/bot.obj");
+	input_manager->AddKey(GLFW_KEY_0, [glw]() {
 
-	tabletop = new PBRTexturedObject(tabletop_mesh.GetMesh());
-	tabletop->transform.Scale(0.2f);
-	tablebot = new PBRTexturedObject(tablebot_mesh.GetMesh());
-	tablebot->transform.Scale(0.2f);
+		moveable_light->SetPower(moveable_light->GetPower() + 5.0f);
+	});
+
+	input_manager->AddKey(GLFW_KEY_9, [glw]() {
+		if (moveable_light->GetPower() > 0.0f)
+		{
+			moveable_light->SetPower(moveable_light->GetPower() - 5.0f);
+		}
+	});
+
+
 }
 
+
+
+
+void SetupLighting()
+{
+	SphereMesh spheremesh;
+	spheremesh.Init();
+
+
+	moveable_light = new LightSource(spheremesh.GetMesh(), LightSource::Point);
+	moveable_light->InitShadowMap(SHADOW_RESOLUTION);
+	moveable_light->Hide(true);
+	moveable_light->SetColour(glm::vec3(0.89f));
+	moveable_light->SetShadowBias(0.45f); 
+	moveable_light->SetPower(0.0f);
+	moveable_light->transform.position = glm::vec3(0,12,0);
+
+
+	sun_light = new LightSource(spheremesh.GetMesh(), LightSource::Point);
+	sun_light->InitShadowMap(SHADOW_RESOLUTION * 2);
+	sun_light->Hide(false);
+	sun_light->SetColour(glm::vec3(0.89f));
+	sun_light->SetShadowBias(0.45f);
+	sun_light->SetPower(130.0f);
+	sun_light->SetShadowStrength(0.7f);
+
+	glm::vec3 start(0, 16.6, 0);
+	//setup torch lights
+	for (int i = -1; i < 2; i+=2)
+	{
+		for (int j = -1; j < 2; j++)
+		{
+			LightSource* torchlight = new LightSource(spheremesh.GetMesh(), LightSource::Point);
+			torchlight->InitShadowMap(SHADOW_RESOLUTION);
+			torchlight->Hide(false);
+			torchlight->transform.Scale(0.2f);
+			torchlight->SetColour(glm::vec3(0.76,0.278,0));
+			torchlight->SetPower(30.0f);
+			torchlight->SetShadowStrength(1.0f);
+			torchlight->SetShadowBias(0.50f);
+			torchlight->transform.position = start + glm::vec3(i * -18.9, 0, j * 15);
+			scene_lighting.AddPointLightSource(torchlight);
+		}
+	}
+
+	scene_lighting.AddPointLightSource(moveable_light);
+	scene_lighting.AddPointLightSource(sun_light);
+
+
+
+	scene_lighting.RenderStaticPointLightShadows([](glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos) {RenderSceneDepth(projection, view, camera_pos, point_shadow_shader); }, point_shadow_shader);
+}
 
 void init(GLWrapper* glw)
 {
@@ -200,7 +249,7 @@ void init(GLWrapper* glw)
 
 		pbr_shader = new Shader("../shaders/pbr.vert", "../shaders/pbr.frag");
 		point_shadow_shader = new Shader("../shaders/pointshadow.vert", "../shaders/pointshadow.frag", "../shaders/pointshadow.gs");
-
+		pbr_reflect_shader = new Shader("../shaders/pbrreflection.vert", "../shaders/pbrreflection.frag");
 		pbr_texture_shader = new Shader("../shaders/pbrtexture.vert", "../shaders/pbrtexture.frag");
 		pbr_texture_reflection_shader = new Shader("../shaders/pbrtexturereflection.vert", "../shaders/pbrtexturereflection.frag");
 
@@ -226,44 +275,56 @@ void init(GLWrapper* glw)
 	PBRTextures wall_textures("../models/wall/albedo.png", "../models/wall/normal.png", "../models/wall/metallic.png", "../models/wall/roughness.png", "../models/wall/ao.png");
 	PBRTextures chandelier_textures("../models/chandelier/textures/albedo.png", "../models/chandelier/textures/normal.png", "../models/chandelier/textures/metallic.png", "../models/chandelier/textures/roughness.png", "../models/chandelier/textures/ao.png");
 	PBRTextures chest_textures("../models/chest/textures/albedo.jpeg", "../models/chest/textures/normal.jpeg", "../models/chest/textures/metallic.jpeg", "../models/chest/textures/roughness.jpeg", "../models/chest/textures/ao.jpeg");
-
 	PBRTextures door_textures("../models/door/textures/albedo.png", "../models/door/textures/normal.png", "../models/door/textures/roughness.png", "../models/door/textures/roughness.png", "../models/door/textures/ao.png");
-	
-
+	PBRTextures torch_textures("../models/torch/textures/albedo.png", "../models/torch/textures/normal.jpg", "../models/torch/textures/metallic.jpg", "../models/torch/textures/roughness.png", "../models/torch/textures/ao.jpg");
+	PBRTextures clock_textures("../models/clock/textures/albedo.jpg", "../models/clock/textures/normal.jpg", "../models/clock/textures/metallic.jpg", "../models/clock/textures/roughness.jpg", "../models/clock/textures/ao.jpg");
 
 	//LOAD MESHES
 	ModelMesh chandeliermesh; chandeliermesh.LoadObject("../models/chandelier/Chandelier.fbx"); chandeliermesh.SetMeshTextures(chandelier_textures);
 	ModelMesh window_mesh; window_mesh.LoadObject("../models/window/window.obj");
 	ModelMesh chestmesh; chestmesh.LoadObject("../models/chest/chest.obj"); chestmesh.SetMeshTextures(chest_textures);
-
+	ModelMesh torchmesh; torchmesh.LoadObject("../models/torch/torch.obj"); torchmesh.SetMeshTextures(torch_textures);
 	ModelMesh doormesh; doormesh.LoadObject("../models/door/door.obj"); doormesh.SetMeshTextures(door_textures);
+	ModelMesh clockmesh; clockmesh.LoadObject("../models/clock/clock.obj"); clockmesh.SetMeshTextures(clock_textures);
 
-
+	SphereMesh spheremesh; spheremesh.Init();
 	PlaneMesh floor_mesh; floor_mesh.Init(); floor_mesh.SetMeshTextures(floor_textures);
 
+	//CREATE Objects
 
 
-	//Init Objects
+	gold_clock = new PBRTexturedReflectObject(clockmesh.GetMesh());
+	gold_clock->CreateDynamicCubeMap(REFLECTION_RESOLUTION);
+	gold_clock->transform.y_angle = 180;
+	gold_clock->transform.position = glm::vec3(0,0,25);
+	gold_clock->AddOffset(glm::vec3(0, 3, 0));
+
+	reflection_circle = new PBRReflectObject(spheremesh.GetMesh());
+	reflection_circle->CreateDynamicCubeMap(REFLECTION_RESOLUTION * 2);
+	reflection_circle->SetPBRProperties(glm::vec3(0, 0, 1), 1.0f, 0.05f);
+	reflection_circle->Hide(true);
+	reflection_circle->transform.Scale(4.0f);
+	reflection_circle->transform.position = glm::vec3(0, 5, 0);
+
+	torch = new PBRTexturedObject(torchmesh.GetMesh());
+	torch->transform.Scale(2.5f);
+	torch->transform.z_angle = -15.0f;
 
 	door = new PBRTexturedObject(doormesh.GetMesh());
 	door->transform.Scale(0.15f);
 	door->transform.y_angle = 270.0f;
-	door->transform.position = glm::vec3(-10, 7.2, -29.7);
+	door->transform.position = glm::vec3(-10, 7.2, -29.8);
 
 
 
 	window = new PBRObject(window_mesh.GetMesh());
 	window->SetPBRProperties(glm::vec3(144.0f/255.0f,89.0f/255.0f, 35.0f/255.0f), 0.2f, 0.3f); 
 	window->transform.Scale(2.0f);
-	window->transform.scale.y + 0.1f;
+	window->transform.scale.x += 0.2f;
+	window->transform.scale.y += 0.2f;
 
-	
 
-	/*ModelMesh candle_mesh;
-	candle_mesh.SetMeshTextures(candle_textures);
-	candle_mesh.LoadObject("../models/candle-holder/candle.obj");*/
 
-	//CreateTable();
 
 	
 
@@ -281,18 +342,6 @@ void init(GLWrapper* glw)
 	
 	
 
-	/*candle_holder1 = new PBRTexturedReflectObject(candle_mesh.GetMesh());
-	candle_holder1->CreateDynamicCubeMap(REFLECTION_RESOLUTION);
-	candle_holder1->transform.Scale(2.0f);
-	candle_holder1->transform.Rotate(90, Transform::Y);
-	candle_holder1->transform.Translate(glm::vec3(-1.473f,5.596,-2.78));
-
-	candle_holder2 = new PBRTexturedReflectObject(candle_mesh.GetMesh());
-	candle_holder2->CreateDynamicCubeMap(REFLECTION_RESOLUTION);
-	candle_holder2->transform.Scale(2.0f);
-	candle_holder2->transform.Rotate(270, Transform::Y);
-	candle_holder2->transform.Translate(glm::vec3(-1.473f, 5.596, 2.78));*/
-
 	floorplane = new PBRTexturedObject(floor_mesh.GetMesh());
 	floorplane->transform.Scale(glm::vec3(10.0f,1.0f,10.0f));
 
@@ -303,34 +352,27 @@ void init(GLWrapper* glw)
 
 
 	//Init lists
-	/*texture_reflect_objects.push_back(candle_holder1);
-	texture_reflect_objects.push_back(candle_holder2);*/
+
+	
+	texture_reflect_objects.push_back(gold_clock);
+	reflect_objects.push_back(reflection_circle);
+
 
 	//configure shaders
-	//pbr_texture_reflection_shader->UseShader();
-	//pbr_texture_reflection_shader->SetInt("reflection_cube", 7);
 
-
-	pbr_texture_shader->UseShader();
-	pbr_texture_shader->SetInt("shadow_map", 10);
-	pbr_texture_shader->SetFloat("far_plane", 300.0f);
 
 	pbr_shader->UseShader();
 	pbr_shader->SetInt("shadow_map", 10);
 	pbr_shader->SetFloat("far_plane", 300.0f);
 
+	pbr_texture_reflection_shader->UseShader();
+	pbr_texture_reflection_shader->SetInt("reflection_cube", 7);
 
+	pbr_reflect_shader->UseShader();
+	pbr_reflect_shader->SetInt("reflection_cube", 7);
 	//init lighting
-	CubeMesh spheremesh;
-	spheremesh.Init();
-	moveable_light = new LightSource(spheremesh.GetMesh(),LightSource::Point);
-	moveable_light->InitShadowMap(SHADOW_RESOLUTION);
-	moveable_light->Hide(false);
-	moveable_light->SetColour(glm::vec3(0.89f));
 
-
-	scene_lighting.AddPointLightSource(moveable_light);
-	
+	SetupLighting();
 
 	//skybox
 
@@ -339,19 +381,25 @@ void init(GLWrapper* glw)
 	skybox->Init();
 }
 
-void RenderTextureReflections() 
+void RenderReflections() 
 {
 	for (auto obj : texture_reflect_objects)
 	{
+		bool x = obj->IsHidden();
+		obj->Hide(true);
+		glm::vec3 pos = obj->transform.position + obj->GetOffset();
+		obj->RenderCubemap([pos](glm::mat4 projection, glm::mat4 view) {RenderScene(projection, view, pos);});
+		obj->Hide(x);
+	}
+
+	for (auto obj : reflect_objects)
+	{
+		bool x = obj->IsHidden();
 		obj->Hide(true);
 		glm::vec3 pos = obj->transform.position;
-		obj->RenderCubemap([pos](glm::mat4 projection, glm::mat4 view) {RenderScene(projection, view, pos);});
-		obj->Hide(false);
+		obj->RenderCubemap([pos](glm::mat4 projection, glm::mat4 view) {RenderScene(projection, view, pos); });
+		obj->Hide(x);
 	}
-}
-
-void RenderReflections() {
-	RenderTextureReflections();
 }
 
 
@@ -364,7 +412,7 @@ void RenderPBRTextureReflect(glm::mat4 projection, glm::mat4 view, glm::vec3 cam
 
 	//candle_holder1->Draw(shader);
 	//candle_holder2->Draw(shader);
-
+	gold_clock->Draw(shader);
 }
 
 void DrawRoom(Shader* shader)
@@ -429,7 +477,7 @@ void DrawRoom(Shader* shader)
 
 	}
 
-
+	
 	wallplane->transform.y_angle = 270;
 	start = glm::vec3(16, 4, 30);
 	for (int i = 0; i < 5; i++)
@@ -445,7 +493,7 @@ void DrawRoom(Shader* shader)
 
 
 	start = glm::vec3(0, 9.9, 30);
-	wallplane->transform.scale = glm::vec3(1.9, 1, 3);
+	wallplane->transform.scale = glm::vec3(2, 1, 2.9);
 
 
 	for (int i = 0; i < 3; i++)
@@ -461,6 +509,8 @@ void DrawRoom(Shader* shader)
 		}
 	}
 	wallplane->transform.scale = tmp_scale;
+	
+
 }
 
 void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader * shader)
@@ -469,20 +519,33 @@ void RenderPBRTexture(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos
 	shader->SetMat4("projection", projection);
 	shader->SetMat4("view", view);
 	shader->SetVec3("camera_position", camera_pos);
-
+	glm::vec3 start;
 	
+	
+	start = glm::vec3(0, 15, 0);
+	torch->transform.y_angle = 180;
+	for (int i = -1; i < 2; i += 2)
+	{
+		for (int j = -1; j < 2; j++)
+		{
+			torch->transform.position = start + glm::vec3(i * -19.5,0, j * 15);
+			torch->Draw(shader);
+		}
+		torch->transform.y_angle = 0;
+	}
+
 
 	//tabletop->Draw(shader);
 	//tablebot->Draw(shader);
 
 	chest->transform.y_angle = 90;
-	glm::vec3 start = glm::vec3(0, 2.2, 0);
+	start = glm::vec3(0, 2.2, 0);
 
 	for (int i = -1; i < 2; i+=2)
 	{
 		for (int j = -1; j < 2; j++)
 		{
-			chest->transform.position = start + glm::vec3(i * -17, 0, j * 12);
+			chest->transform.position = start + glm::vec3(i * -17.4, 0, j * 12);
 			chest->Draw(shader);
 		}
 		
@@ -542,17 +605,25 @@ void RenderSkybox(glm::mat4 projection, glm::mat4 view)
 	skybox->Draw();
 }
 
+void RenderPBRReflect(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader* shader)
+{
+	shader->UseShader();
+	shader->SetMat4("projection", projection);
+	shader->SetMat4("view", view);
+	shader->SetVec3("camera_position", camera_pos);
+
+	reflection_circle->Draw(shader);
+}
+
 void RenderScene(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos)
 {
 	RenderPBRTextureReflect(projection, view, camera_pos, pbr_texture_reflection_shader);
 	RenderPBRTexture(projection, view, camera_pos, pbr_texture_shader);
+	RenderPBRReflect(projection, view, camera_pos, pbr_reflect_shader);
 	RenderPBR(projection, view, camera_pos, pbr_shader);
 	RenderLights(projection, view, camera_pos, simple_shader);
 	RenderSkybox(projection, view);
 }
-
-
-
 
 void RenderSceneDepth(glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos, Shader * shader)
 {
@@ -566,6 +637,7 @@ void PerformLighting()
 {
 	scene_lighting.UpdateShaderWithLightInfo(pbr_texture_shader);
 	scene_lighting.UpdateShaderWithLightInfo(pbr_shader);
+	scene_lighting.UpdateShaderWithLightInfo(pbr_texture_reflection_shader);
 
 	scene_lighting.RenderPointLightShadows([](glm::mat4 projection, glm::mat4 view, glm::vec3 camera_pos) {RenderSceneDepth(projection, view, camera_pos, point_shadow_shader); }, point_shadow_shader);
 	scene_lighting.AttachShadowMaps();	
@@ -577,6 +649,11 @@ void display()
 	const GLfloat currentFrame = (GLfloat)glfwGetTime();
 	delta_time = currentFrame - last_frame;
 	last_frame = currentFrame;
+
+
+	sun_light->transform.position = glm::vec3(0, 15, 60) + glm::vec3((GLfloat) sin(glfwGetTime() * 0.05) * 15, 0, (GLfloat) cos(glfwGetTime() * 0.05) * 15);
+	
+
 
 	input_manager->ProcessInput();
 
@@ -658,6 +735,49 @@ unsigned int loadTexture(char const* path)
 	return textureID;
 }
 
+static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	
+	if (key == GLFW_KEY_T && action == GLFW_PRESS)
+	{
+		hide_light = !hide_light;
+		if (hide_light) { tmp_power = moveable_light->GetPower(); moveable_light->SetPower(0); }
+		else{ moveable_light->SetPower(50.0f); }
+		moveable_light->Hide(hide_light);
+	}
+		
+	if (key == GLFW_KEY_Y && action == GLFW_PRESS)
+	{
+		hide_reflection_sphere = !hide_reflection_sphere;
+		reflection_circle->Hide(hide_reflection_sphere);
+	}
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+	{
+		hide_sun = !hide_sun;
+		if (hide_sun) { sun_tmp_power = sun_light->GetPower(); sun_light->SetPower(0); }
+		else { sun_light->SetPower(sun_tmp_power); }
+		sun_light->Hide(hide_sun);
+	}
+
+}
+
+void print_instructions()
+{
+	std::cout << std::endl << std::endl << "WASD: Move camera positon" << std::endl;
+
+	std::cout << "Mouse: Camera look around" << std::endl;
+	std::cout << "IJ KL UO: Move Light around" << std::endl;
+	std::cout << "T: Toggle light on/off" << std::endl;
+	std::cout << "9 0: Increase decrease light strength" << std::endl;
+
+	std::cout << "Y: Toggle reflection sphere on/off" << std::endl;
+	std::cout << "R: Toggle Sun" << std::endl;
+
+	
+
+
+
+}
 
 /* Entry point of program */
 int main(int argc, char* argv[])
@@ -672,11 +792,13 @@ int main(int argc, char* argv[])
 	}
 
 	// Register the callback functions
+	glw->setKeyCallback(key_callback);
 	glw->setRenderer(display);
 	glw->setReshapeCallback(reshape);
 
 	/* Output the OpenGL vendor and version */
 	glw->DisplayVersion();
+	print_instructions();
 
 	init(glw);
 

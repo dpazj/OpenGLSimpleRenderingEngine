@@ -77,12 +77,13 @@ public:
 	void SetPower(GLfloat power) { m_power = power; }
 	void SetShadowStrength(GLfloat power) { m_shadow_strength = power; }
 	void SetShadowBias(GLfloat power) { m_shadow_bias = power; }
-
+	void SetStatic(bool is_static) { m_static = is_static; }
 
 	glm::vec3 GetColour() { return m_colour; }
 	GLfloat GetPower() { return m_power; }
 	GLfloat GetShadowStrength() { return m_shadow_strength; }
 	GLfloat GetShadowBias() { return m_shadow_bias; }
+	bool IsStatic() { return m_static; }
 
 
 
@@ -99,4 +100,6 @@ private:
 	GLfloat m_power = 10.0f;
 	GLfloat m_shadow_strength = 1.0f;
 	GLfloat m_shadow_bias = 0.25f;
+
+	bool m_static = false;
 };

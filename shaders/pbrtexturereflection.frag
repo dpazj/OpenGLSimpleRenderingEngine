@@ -6,6 +6,19 @@
 
 #version 400
 
+#define MAXLIGHTS 20
+
+struct Light{
+	vec3 position;
+	vec3 colour;
+	float power;
+
+	float far_plane;
+
+	float shadow_strength;
+	float shadow_bias;
+};
+
 out vec4 outputColor;
 in vec2 TextureCoordinates;
 in vec3 Position, Normal;
@@ -21,9 +34,10 @@ uniform sampler2D ambient_occlusion_map;
 
 uniform samplerCube reflection_cube;
 
-// lights
-uniform vec3 light_positions[4];
-uniform vec3 light_colours[4];
+uniform samplerCube shadow_cube_maps[MAXLIGHTS];
+uniform Light lights[MAXLIGHTS];
+uniform uint number_of_lights;
+
 
 const float PI = 3.14159265359;
 
@@ -86,6 +100,38 @@ float calculate_distribution(vec3 N, vec3 Half, float roughness) //Trowbridge-Re
 	return alpha2 / max(denom,0.0000001);
 }
 
+vec3 gridsamples[20] = vec3[]
+(
+   vec3(1, 1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1), vec3(-1, 1,  1), 
+   vec3(1, 1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1), vec3(-1, 1, -1),
+   vec3(1, 1,  0), vec3( 1, -1,  0), vec3(-1, -1,  0), vec3(-1, 1,  0),
+   vec3(1, 0,  1), vec3(-1,  0,  1), vec3( 1,  0, -1), vec3(-1, 0, -1),
+   vec3(0, 1,  1), vec3( 0, -1,  1), vec3( 0, -1, -1), vec3( 0, 1, -1)
+);
+
+float calculate_shadow(Light light, int cubemap_index)
+{
+	vec3 tolight = Position - light.position;
+	float current = length(tolight);
+
+
+	float shadow = 0.0;
+	float bias   = light.shadow_bias;
+	int samples  = 20;
+	float viewDistance = length(camera_position - Position);
+	float diskRadius = (1.0 + (viewDistance / light.far_plane)) / 20.0;  
+	for(int i = 0; i < samples; ++i)
+	{
+		float closest = texture(shadow_cube_maps[cubemap_index], tolight + gridsamples[i] * diskRadius).r;
+		closest *= light.far_plane;   
+		if(current - bias > closest)
+			shadow += 1.0;
+	}
+	shadow /= float(samples); 
+
+	return shadow * light.shadow_strength;
+}
+
 void main()
 {
 	vec3 albedo  = pow(texture(albedo_map, TextureCoordinates).rgb, vec3(2.2));
@@ -103,12 +149,12 @@ void main()
 
 	for(int i = 0; i < 1; i++)
 	{
-		vec3 LightDir = normalize(light_positions[i] - Position);
+		vec3 LightDir = normalize(lights[i].position - Position);
 		vec3 Half = normalize(V + LightDir);
 
-		float distance_to_light = length(light_positions[i] - Position);
+		float distance_to_light = length(lights[i].position - Position);
 		float attenuation = 1.0 / (distance_to_light * distance_to_light); //turn this into the quadratic 
-		vec3 radiance = light_colours[i] * attenuation;
+		vec3 radiance = lights[i].colour * attenuation;
 
 		vec3 Fresnel = calculate_fresnel(max(dot(Half,V),0.0),F0);
 		float distribution = calculate_distribution(N,Half,roughness);
@@ -122,8 +168,10 @@ void main()
 		vec3 KD = vec3(1.0) - KS;
 		KD *= 1.0 - metallic;
 
+		float shadow = calculate_shadow(lights[i], i);
+
 		float n_dot_l = max(dot(N,LightDir),0.0);
-		LightOutput += (KD * albedo / PI + Specular) * radiance * n_dot_l;	
+		LightOutput += (((KD * albedo / PI + Specular) + (-shadow * 0.5)) * radiance * n_dot_l) * lights[i].power;	
 	}
 
 	vec3 ambient = vec3(0.03) * albedo * ambient_occlusion;
@@ -133,9 +181,9 @@ void main()
 	colour = colour / (colour + vec3(1.0));
 	colour = pow(colour, vec3(1.0/2.2)); 
 
-	vec4 reflection = texture(reflection_cube, reflect(-V,N)) * roughness;
+	vec4 reflection = texture(reflection_cube, reflect(-V,N)) * (1 - roughness);
 
-	outputColor = mix(vec4(colour,1.0),reflection, metallic * 0.5);
+	outputColor = mix(vec4(colour,1.0),reflection, metallic - 0.1f);
 }
 
 

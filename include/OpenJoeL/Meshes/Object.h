@@ -117,6 +117,7 @@ public:
 
 	void Draw(Shader* shader, glm::mat4 idendity = glm::mat4(1.0f)) override
 	{
+		if (!m_draw) { return; }
 		shader->SetFloat("metallic", m_metallic);
 		shader->SetFloat("roughness", m_roughness);
 		shader->SetFloat("ambient_occlusion", m_ambient_occlusion);
@@ -190,11 +191,22 @@ public:
 
 	void RenderCubemap(std::function<void(glm::mat4, glm::mat4)> render_function)
 	{
-		m_reflection_cubemap->RenderCubemap(transform.position, render_function);
+		m_reflection_cubemap->RenderCubemap(transform.position + m_offset, render_function);
+	}
+
+	void AddOffset(glm::vec3 offset)
+	{
+		m_offset = offset;
+	}
+
+	glm::vec3 GetOffset()
+	{
+		return m_offset;
 	}
 
 private:
 	DynamicCubemap* m_reflection_cubemap;
+	glm::vec3 m_offset = glm::vec3(0);
 };
 
 

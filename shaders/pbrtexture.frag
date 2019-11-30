@@ -5,7 +5,7 @@
 
 
 #version 400
-#define MAXLIGHTS 10
+#define MAXLIGHTS 20
 
 struct Light{
 	vec3 position;

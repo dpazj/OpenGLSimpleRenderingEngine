@@ -35,6 +35,7 @@ DynamicCubemap::DynamicCubemap(GLuint size)
 void DynamicCubemap::RenderCubemap(glm::vec3 world_pos, std::function<void(glm::mat4, glm::mat4)> render_scene)
 {
 	glViewport(0, 0, m_size, m_size);
+	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, m_cube_map);
 	m_frame_buffer->Bind();
 	
@@ -80,6 +81,7 @@ void DynamicCubemap::RenderCubemap(glm::vec3 world_pos, std::function<void(glm::
 	}
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	glActiveTexture(GL_TEXTURE0);
 	m_frame_buffer->Unbind();
 }
 

@@ -4,7 +4,7 @@
 #include "LightSource.h"
 #include <vector>
 
-#define MAX_LIGHTS 10
+#define MAX_LIGHTS 20
 
 class Lighting
 {
@@ -20,7 +20,7 @@ public:
 
 	void UpdateShaderWithLightInfo(Shader * shader);
 
-
+	void RenderStaticPointLightShadows(std::function<void(glm::mat4, glm::mat4, glm::vec3)> render_function, Shader* shader);
 	void RenderPointLightShadows(std::function<void(glm::mat4, glm::mat4, glm::vec3)> render_function, Shader* shader);
 	//void RenderDirectionalLightShadows(std::function<void(glm::mat4, glm::mat4)> render_function, Shader* shader);
 

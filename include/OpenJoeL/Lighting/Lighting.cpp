@@ -72,14 +72,26 @@ void Lighting::UpdateShaderWithLightInfo(Shader* shader)
 }
 
 
-
+void Lighting::RenderStaticPointLightShadows(std::function<void(glm::mat4, glm::mat4, glm::vec3)> render_function, Shader* shader)
+{
+	for (const auto& light : m_point_lights)
+	{
+		if (light->GetType() == LightSource::Point || light->IsStatic())
+		{
+			bool x = light->IsHidden();
+			light->Hide(true);
+			light->RenderShadowMap(render_function, shader);
+			light->Hide(x);
+		}
+	}
+}
 
 
 void Lighting::RenderPointLightShadows(std::function<void(glm::mat4, glm::mat4, glm::vec3)> render_function, Shader * shader)
 {
 	for (const auto& light : m_point_lights)
 	{
-		if (light->GetType() == LightSource::Point)
+		if (light->GetType() == LightSource::Point || !light->IsStatic())
 		{
 			bool x = light->IsHidden();
 			light->Hide(true);
